@@ -40,7 +40,7 @@ s['notalert']       = _addon.getSetting("notalert")
 s['codepage']       = _addon.getSetting("codepage")
 
 def settimer(h,m,s):
-	xbmc.executebuiltin('XBMC.AlarmClock(jtv,XBMC.RunScript(script.service.jtvtoxmltv, onTimer),%s:%s:%s)'%(h,m,s))
+	xbmc.executebuiltin('XBMC.AlarmClock(jtv,XBMC.RunScript(script.service.jtvtoxmltv, onTimer),%s:%s:%s ,silent)'%(h,m,s))
 	#xbmc.executebuiltin('XBMC.AlarmClock(jtv,XBMC.RunScript(script.service.jtvtoxmltv, onTimer),%s:%s:%s)'%(0,0,20))
 	
 def getjtv():	
