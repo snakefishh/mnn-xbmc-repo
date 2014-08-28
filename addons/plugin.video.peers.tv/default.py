@@ -172,7 +172,8 @@ def play(params):
 	Url_  = urllib.unquote_plus(params['playurl'])	
 
 	playList = xbmc.PlayList(xbmc.PLAYLIST_VIDEO)
-		
+	playList.clear()	
+	
 	item = xbmcgui.ListItem(title, iconImage = '', thumbnailImage = '')
 	item.setInfo(type="Video", infoLabels={"Title":title})				
 				
