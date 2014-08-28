@@ -3,6 +3,7 @@
 
 import urllib, urllib2, re, sys, os, json, datetime
 import xbmcplugin, xbmcgui, xbmcaddon, xbmc
+from BeautifulSoup import BeautifulSoup
 
 _addon_name 	= 'plugin.video.peers.tv'
 _addon 			= xbmcaddon.Addon(id = _addon_name)
@@ -35,7 +36,7 @@ def get_params():
 
 def Get_url(url, headers={}, Post = None, GETparams={}, JSON=False):
 	if GETparams:
-		url = "%s?%s" % (url, urllib.urlencode(params))
+		url = "%s?%s" % (url, urllib.urlencode(GETparams))
 	if Post:
 		Post = urllib.urlencode(Post)		
 	req = urllib2.Request(url, Post)
@@ -69,23 +70,40 @@ def Get_url(url, headers={}, Post = None, GETparams={}, JSON=False):
 
 def getchannels():	
 	Data  = Get_url('http://peers.tv')
-	Data2 = re.search('id="prog-chalist"><dd>.*</dd></dl>', Data).group(0)
-	Data2 = Data2.replace(' class="locked"', '');	
-	links = re.compile('<a href="/program/(.+?)/" data-id="(.+?)"><i><img src="(.+?)".+? <b>(.+?)</b></a>').findall(Data2)
-		
-	if links:
-		for channelAlias, channelId ,img, title in links:
+	soup = BeautifulSoup(Data)
+	soup = soup.find('dl', id="prog-chalist")
+	alltega= soup.findAll('a')
+
+	if alltega:
+		for tega in alltega:
+			channelAlias = re.match('/program/(.+?)/' ,tega['href']).group(1)
+			channelId    = tega['data-id']
+			img          = tega.i.img['src']
+			title        = tega.b.contents[0].encode('UTF-8')
 			
 			oldpng = re.search('/([0-9]+?).png', img).group(1)
 			newpng = img.replace(oldpng, str(int(oldpng)-2))		
 			img = 'http://peers.tv'+newpng 
-			
-			uri = '%s?%s' % (sys.argv[0], urllib.urlencode({'mode':'getprogram', 'id':channelId, 'channelAlias':channelAlias}))
+
+			uri = '%s?%s' % (sys.argv[0], urllib.urlencode({'mode':'getprogram' if _addon.getSetting("arh")=='true' else 'getmenu', 'id':channelId, 'channelAlias':channelAlias}))
 			item = xbmcgui.ListItem(title, iconImage = img, thumbnailImage = img)
 			item.setInfo(type="Video", infoLabels={"Title": title})
 			xbmcplugin.addDirectoryItem(plugin_handle, uri, item, True)					
 		xbmcplugin.endOfDirectory(plugin_handle)
 
+def getmenu(params):	
+	
+	filesurl = 'http://hls.cn.ru/streaming/%s/16/tvrec/playlist.m3u8'%(params['channelAlias'])
+	uri = '%s?%s' % (sys.argv[0], urllib.urlencode({'mode':'play','title':'' ,'playurl':filesurl}))
+	item = xbmcgui.ListItem('Прямая трансляция', iconImage = '', thumbnailImage = '')
+	xbmcplugin.addDirectoryItem(plugin_handle, uri, item, False)
+	
+	uri = '%s?%s' % (sys.argv[0], urllib.urlencode({'mode':'getprogram', 'id':params['id'], 'channelAlias':params['channelAlias']}))
+	item = xbmcgui.ListItem('АРХИВ', iconImage = '', thumbnailImage = '')
+	xbmcplugin.addDirectoryItem(plugin_handle, uri, item, True)					
+		
+	xbmcplugin.endOfDirectory(plugin_handle)	
+				
 def getprogram(params):
 	updateListing=True
 	try:
@@ -99,16 +117,19 @@ def getprogram(params):
 	js = Get_url(url_,JSON=True)
 	
 	prgdatelst   = js['week']
+	if _addon.getSetting("sort")=='0':
+		prgdatelst.reverse()
 	prgdate      = js['date']
 	prgtelecasts = js['telecasts']
-		
+	
 	for k in prgdatelst:
-		prgtitle = k['date'][3:5]+'/'+k['date'][0:2]+'/'+k['date'][6:10]
-		uri = '%s?%s' % (sys.argv[0], urllib.urlencode({'mode':'getprogram', 'id':params['id'], 'date':k['date'], 'channelAlias':params['channelAlias']}))
-		item = xbmcgui.ListItem(prgtitle, iconImage = '', thumbnailImage = '')
-		xbmcplugin.addDirectoryItem(plugin_handle, uri, item, True)	
+		if k['recs']==True:
+			prgtitle = k['date'][3:5]+'/'+k['date'][0:2]+'/'+k['date'][6:10]
+			uri = '%s?%s' % (sys.argv[0], urllib.urlencode({'mode':'getprogram', 'id':params['id'], 'date':k['date'], 'channelAlias':params['channelAlias']}))
+			item = xbmcgui.ListItem(prgtitle, iconImage = '', thumbnailImage = '')
+			xbmcplugin.addDirectoryItem(plugin_handle, uri, item, True)	
 		
-		if k['date']==prgdate:
+		if (k['date']==prgdate)and((updateListing) or (_addon.getSetting("opendey")=='true')):
 			for i in prgtelecasts:
 				title = i['title'].encode('UTF-8')
 				chinfo  = i['info'].encode('UTF-8')
@@ -145,10 +166,12 @@ def getprogram(params):
 
 def play(params):	
 	if (params['playurl']==''):return None		
+	
+####################3	
 	title = urllib.unquote_plus(params['title'])
 	Url_  = urllib.unquote_plus(params['playurl'])	
+
 	playList = xbmc.PlayList(xbmc.PLAYLIST_VIDEO)
-	playList.clear()
 		
 	item = xbmcgui.ListItem(title, iconImage = '', thumbnailImage = '')
 	item.setInfo(type="Video", infoLabels={"Title":title})				
@@ -156,6 +179,29 @@ def play(params):
 	playList.add(Url_,item)
 	xbmc.Player().play(playList)
 		
+############################	
+#	title = urllib.unquote_plus(params['title'])
+#	Url_  = urllib.unquote_plus(params['playurl'])	
+#	
+#	Data=Get_url(Url_)
+#	links = re.compile('(http://.+?\.ts)').findall(Data)
+#	#print links
+#	
+#	#sys.exit()
+#	
+#	playList = xbmc.PlayList(xbmc.PLAYLIST_VIDEO)
+#	playList.clear()
+#		
+#			
+#	for Url_ in links:
+#		item = xbmcgui.ListItem(title, iconImage = '', thumbnailImage = '')
+#		item.setInfo(type="Video", infoLabels={"Title":title})		
+#		playList.add(Url_,item)
+#	xbmc.Player().play(playList)
+		
+################################
+	
+
 #---------------------------
 params = get_params()
 mode = None
@@ -167,5 +213,7 @@ if   mode == None:
 	getchannels()
 elif mode == 'getprogram':
 	getprogram(params)
+elif mode == 'getmenu':
+	getmenu(params)	
 elif mode == 'play':
 	play(params)
