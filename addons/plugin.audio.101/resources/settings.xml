@@ -2,4 +2,5 @@
 <settings>
 	<setting id="username" label="Логин" type="text" default="" />
 	<setting id="password" label="Пароль" type="text" option="hidden" default="" />
+	<setting id="defaultplaymode" label="Предпочтительный audio поток" type="enum" values="только mp3|только wma|wma затем mp3|mp3 затем wma" default="3" /> 
 </settings>

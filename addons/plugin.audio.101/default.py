@@ -1,44 +1,17 @@
 #!/usr/bin/python
 # -*- coding: utf-8 -*-
+
 ''' TODO
-
 Добавить станцию в избранное по id 
-
 индикатор количества слушателей
-
 во второй строке что сейчас играет
-
 получение информации об играющем треке на персоналках
 
-test6
-
------------------------------------------------------------------------------
-title = '11111'+chr(10)+'11111'
-<z mod="ctrl">RunScript(plugin.audio.101,-1,mode=addcurrenttrack)</z>
- 
- 
-params = get_params(sys.argv[2])
-try:
-	func = params['func']
-	del params['func']
-except:
-	func = None
-	xbmc.log( '[%s]: Primary input' % addon_id, 1 )
-	mainScreen(params)
-if func != None:
-	try: pfunc = globals()[func]
-	except:
-		pfunc = None
-		xbmc.log( '[%s]: Function "%s" not found' % (addon_id, func), 4 )
-		showMessage('Internal addon error', 'Function "%s" not found' % func, 2000)
-	if pfunc: pfunc(params) 
- 
+2014 Viktor PetroFF добавил три PlayMode: 'asx', 'wma', 'mp3'
+по умолчанию используется 'wma', для эфирных станций используется 'json'
 '''
 
-
-
-
-import urllib, urllib2, re, sys, os, json
+import urllib, urllib2, re, sys, os, json, random
 import xbmcplugin, xbmcgui, xbmcaddon, xbmc
 
 
@@ -61,30 +34,13 @@ url['authorization']       = 'http://101.ru/api/authorization.php'
 url['getgroup']            = 'http://101.ru/api/getgroup.php'
 url['getstations']         = 'http://101.ru/api/getstationsbygroup.php?group_id=%s'
 url['getfavotitesstation']   ='http://101.ru/?an=favorite_channels'
-
 url['playstation']         = 'http://101.ru/api/getstationstream.php?station_id=%s&quality=2'
-
 url['getfavoritestrack']   = 'http://101.ru/api/getfavoritestrack.php?user_id=%s&authkey=%s&offset=0&count=1000'
 url['addtracktofavorites'] = 'http://101.ru/?an=fav_u_new_add&module=channel&id='
-
 url['deletefavoritetrack'] = 'http://101.ru/api/deletefavoritetrack.php?track_id=%s&user_id=%s&authkey=%s'
 url['find'] 			   = 'http://101.ru/?an=perstrack_search_result'
 url['getplayingtrackinfo'] = 'http://101.ru/api/getplayingtrackinfo.php?station_id='
-
-
-#url['getfavotitesstation'] = 'http://101.ru/api/getfavotitesstation.php?user_id=%s&authkey=%s&offset=0&count=1000'
-#url['addfavorite']         = 'http://101.ru/api/addstationtofavorites.php?station_id=%s&user_id=%s&authkey=%s'
-#url['delfavorite']         = 'http://101.ru/api/deletefavoritestation.php?station_id=%s&user_id=%s&authkey=%s'
-#url['addtracktofavorites'] = 'http://101.ru/api/addtracktofavorites.php'
-
-
-
-
-#http://101.ru/api/counterlisteners.php?channel=193366&type=personal&_=1391567088664	
-
-
-	
-	
+url['playasxstation']      = 'http://101.ru/new101.php?uid=%s&bit=2'
 
 def get_params():
 	param=[]
@@ -107,13 +63,14 @@ def get_params():
 	
 def Get_url(url, headers={}, Post = None, GETparams={}, JSON=False):
 	if GETparams:
-		url = "%s?%s" % (url, urllib.urlencode(params))
+		url = "%s?%s" % (url, urllib.urlencode(GETparams))
 
 	if Post:
 		Post = urllib.urlencode(Post)
 		
 	req = urllib2.Request(url, Post)
 	req.add_header("User-Agent", User_Agent)
+	req.add_header("Accept-Encoding","deflate")
 	
 	for key, val in headers.items():
 		req.add_header(key, val)
@@ -124,7 +81,7 @@ def Get_url(url, headers={}, Post = None, GETparams={}, JSON=False):
 		xbmc.log('[101.ru] %s' % e, xbmc.LOGERROR)
 		xbmcgui.Dialog().ok(' ОШИБКА', str(e))
 		return None
-	
+
 	try:
 		Data=response.read()
 		if response.headers.get("Content-Encoding", "") == "gzip":
@@ -134,7 +91,6 @@ def Get_url(url, headers={}, Post = None, GETparams={}, JSON=False):
 		return None		
 	response.close()
 
-	
 	if JSON:
 		try:
 			js = json.loads(Data)
@@ -142,6 +98,7 @@ def Get_url(url, headers={}, Post = None, GETparams={}, JSON=False):
 			xbmc.log('[101.ru] %s' % e, xbmc.LOGERROR)
 			xbmcgui.Dialog().ok(' ОШИБКА', str(e))
 			return None
+			
 		if js['status']:
 			xbmc.log('[101.ru] %s' % (str(js['errorCode'])+'  '+js['errorMsg'].encode('UTF-8')), xbmc.LOGERROR)
 			xbmcgui.Dialog().ok(' ОШИБКА', str(js['errorCode'])+'  '+js['errorMsg'].encode('UTF-8'))
@@ -150,7 +107,51 @@ def Get_url(url, headers={}, Post = None, GETparams={}, JSON=False):
 		Data = js['result']
 	
 	return Data
-	
+
+def HeadAsx_url(url, TimeOut=4):
+	req = urllib2.Request(url)
+	#req.get_method = lambda : 'HEAD'
+	#req.add_header("User-Agent", User_Agent)
+	req.add_header("User-Agent","NSPlayer/4.1.0.3856")
+	req.add_header("Accept","*/*")
+	req.add_header("Accept-Encoding","deflate")
+	req.add_header("Pragma","no-cache,rate=1.000000,request-context=2,"
+					"xPlayStrm=1,xClientGUID={7FF0343D-0C80-4c7f-806C-3F6E8C24855D},"
+					"stream-switch-count=1,stream-switch-entry=ffff:1:0,stream-time=0")
+	req.add_header("Connection","close")
+
+	retcode = 400
+
+	try:
+		response = urllib2.urlopen(req, timeout=TimeOut)
+		retcode = response.getcode()		
+		response.close()
+	#except socket.timeout:
+		#retcode = 408
+	except urllib2.HTTPError, e:
+		retcode = e.code
+	except urllib2.URLError:
+		pass
+	except:
+		retcode = 408
+
+	return retcode
+
+def ParseAsx(asx, Shuffle=True):
+	lst = []
+	if (asx and len(asx) > 0):
+		asx = re.sub('<ref\\s+href', '<ref href', asx)
+		asx = re.sub('href\\s*=\\s*"', 'href="', asx)
+		asx = re.sub('(?<=://)([^\\?]+)\\?[^"]*"', '\\1"', asx)
+		regex = re.compile('(?<=<ref\\shref=")mms://[^"]*', re.I)
+		lst = regex.findall(asx)
+		if len(lst) > 0:
+			lst = lst[1:]
+			if Shuffle:
+				random.shuffle(lst)
+
+	return lst
+
 def authorization():
 	param = {}
 	param['login']   = _addon.getSetting('username')
@@ -218,10 +219,10 @@ def getstations(params):
 			img = i['picUrl']
 			id = i['id']
 							
-			if i['group_id']=='-1': 
+			if i['group_id']=='-1':
 				playmode='rtmp'
 			else: 
-				playmode='json'
+				playmode=_addon.getSetting('defaultplaymode')
 			
 			uri = '%s?%s' % (sys.argv[0], urllib.urlencode({'mode':'play', 'id':id, 'playmode':playmode, 'title':title}))
 			item = xbmcgui.ListItem(title, iconImage = img, thumbnailImage = img)
@@ -251,7 +252,7 @@ def izbrannoe(params):
 			playmode ='rtmp'
 		else:
 			url2 = re.findall('channel=([0-9]+)', url1)
-			if url2: playmode ='json'
+			if url2: playmode =_addon.getSetting('defaultplaymode')
 		
 		if playmode:
 			if url2[0] == _addon.getSetting('userid'): continue
@@ -260,56 +261,96 @@ def izbrannoe(params):
 			item.setInfo(type="Music", infoLabels={"Title": title})
 			
 			txt = ContextMenuColor % ('101.ru Удалить из Избранного')
-			uri1 = 'XBMC.RunPlugin(%s?%s)' % (sys.argv[0],urllib.urlencode({'mode':'delfavorite', 'id':url2[0], 'group_id':'1' if playmode =='json' else '-1'}))
+			uri1 = 'XBMC.RunPlugin(%s?%s)' % (sys.argv[0],urllib.urlencode({'mode':'delfavorite', 'id':url2[0], 'group_id':'-1' if playmode =='rtmp' else '1'}))
 			item.addContextMenuItems([(txt, uri1,)], replaceItems=False)
 			
 			xbmcplugin.addDirectoryItem(plugin_handle, uri, item)
 	xbmcplugin.endOfDirectory(plugin_handle)
-		
 
+def NewListItem():
+	title =  urllib.unquote_plus(params['title'])
+	item = xbmcgui.ListItem(params['title'],'plugin.audio.101-'+params['id']+'-'+params['playmode'], iconImage = '', thumbnailImage = '')
+	item.setInfo(type="Music", infoLabels={"Title":title})
+	return item
 	
 def play(params):	
 	playmode = params['playmode']
 
-	title =  urllib.unquote_plus(params['title'])
 	try: url1   =  urllib.unquote_plus(params['url'])
 	except: pass
 	
 	playList = xbmc.PlayList(xbmc.PLAYLIST_MUSIC)
 	playList.clear()
-	
-	if playmode == 'json':
-	
+
+	if playmode == '2': #wma затем mp3
+		asx = Get_url(url['playasxstation'] % (params['id']))
+		lst = ParseAsx(asx)
+		for uri in lst:
+			playList.add(uri, NewListItem())
+
 		js = Get_url(url['playstation'] % (params['id']), JSON=True)
-		if js:				
+		if (js and len(js['playlist']) > 1):
+			entry = js['playlist'][0]
+			if playList.size() > 1:
+				playList.add(entry['url'], NewListItem(), 1)
+			else:
+				playList.add(entry['url'], NewListItem())
+			entry = js['playlist'][1]
+			if playList.size() > 3:
+				playList.add(entry['url'], NewListItem(), 3)
+			else:
+				playList.add(entry['url'], NewListItem())
+	elif playmode == '3': #mp3 затем wma
+		js = Get_url(url['playstation'] % (params['id']), JSON=True)
+		if js:
 			for i in js['playlist']:
-				item = xbmcgui.ListItem(params['title'],'plugin.audio.101-'+params['id']+'-'+params['playmode'], iconImage = '', thumbnailImage = '')
-				item.setInfo(type="Music", infoLabels={"Title":params['title']})				
-				playList.add(i['url'], item)
-			xbmc.Player().play(playList)
+				playList.add(i['url'], NewListItem())
+		asx = Get_url(url['playasxstation'] % (params['id']))
+		lst = ParseAsx(asx)
+		if len(lst) > 1:
+			hc = HeadAsx_url(lst[0].replace('mms','http'))
+			#xbmc.log('hc=%d'%hc, xbmc.LOGDEBUG);
+			if hc == 200:
+				if playList.size() > 1:
+					playList.add(lst[0], NewListItem(), 1)
+				else:
+					playList.add(lst[0], NewListItem())
+				if playList.size() > 3:
+					playList.add(lst[1], NewListItem(), 3)
+				else:
+					playList.add(lst[1], NewListItem())
+	elif playmode == '1': #только wma
+		asx = Get_url(url['playasxstation'] % (params['id']))
+		#xbmc.log(asx, xbmc.LOGDEBUG);
+		lst = ParseAsx(asx)
+		for uri in lst:
+			playList.add(uri, NewListItem())
+	elif playmode == '0': #только mp3
+		js = Get_url(url['playstation'] % (params['id']), JSON=True)
+		if js:
+			for i in js['playlist']:
+				playList.add(i['url'], NewListItem())
 	elif playmode == 'track':
-		item = xbmcgui.ListItem(title,'plugin.audio.101-'+params['id']+'-'+params['playmode'], iconImage = '', thumbnailImage = '')
-		item.setInfo(type="Music", infoLabels={"Title":title})
-		playList.add(url1,item)
-		xbmc.Player().play(playList)
+		playList.add(url1,NewListItem())
 	elif playmode == 'rtmp':
 
 		header1 = '|Referer=' + urllib.quote_plus('www.101.ru')
 		header2 = '&Range=' + urllib.quote_plus('')			
 				
-		Url_ = 'rtmp://wz6.101.ru/pradio22/'+params['id']+'///main'+header1+header2
+		Url_ = 'rtmp://wz7.101.ru/pradio22/'+params['id']+'///main'+header1+header2
 		playpath = 'main'
 		swfUrl = "http://101.ru/static/js/uppod/uppod.swf"
 		
-		item = xbmcgui.ListItem(title,'plugin.audio.101-'+params['id']+'-'+params['playmode'], iconImage = '', thumbnailImage = '')
-		item.setInfo(type="Music", infoLabels={"Title":title})
+		item = NewListItem()
 		item.setProperty('PlayPath', playpath)
 		item.setProperty('swfUrl', swfUrl)
 		item.setProperty('mimetype', 'video/flv')
 		
 		playList.add(Url_,item)
+
+	if playList.size() > 0:
 		xbmc.Player().play(playList)
-	
+		
 def addfavorite(params):
 	if params['group_id'] == '-1':
 		url_= 'http://m.101.ru/ajax/actionfavorite.php?actfav=addchannel&channel=%s&typechannel=personal' %(params['id'])
@@ -330,8 +371,7 @@ def delfavorite(params):
 		url_= 'http://m.101.ru/ajax/actionfavorite.php?actfav=del&channel=%s&typechannel=personal' %(params['id'])
 	else:
 		url_= 'http://m.101.ru/ajax/actionfavorite.php?actfav=del&channel=%s&typechannel=channel' %(params['id'])
-	
-	
+		
 	authkey=_addon.getSetting('authkey').split('::')	
 	Headers= {'X-Requested-With':'XMLHttpRequest',
               'Referer':'http://101.ru/',
@@ -347,13 +387,11 @@ def getmyst(params):
 	uri = '%s?%s' % (sys.argv[0], urllib.urlencode({'mode':'play', 'id':params['id'],'playmode':'rtmp', 'title':'Моё Радио'}))
 	item = xbmcgui.ListItem('Слушать')
 	xbmcplugin.addDirectoryItem(plugin_handle, uri, item, False)
-
 	
 	uri = '%s?%s' % (sys.argv[0], urllib.urlencode({'mode':'getmytracks', 'id':'mytracks', 'userid':_addon.getSetting('userid'), 'authkey':_addon.getSetting('authkey')}))
 	item = xbmcgui.ListItem('Треки')
 	xbmcplugin.addDirectoryItem(plugin_handle, uri, item, True)
-	
-	
+		
 	uri = '%s?mode=findtracks&offset=0&ftext=0' % (sys.argv[0])
 	item = xbmcgui.ListItem('Поиск')
 	xbmcplugin.addDirectoryItem(plugin_handle, uri, item, True)
@@ -436,8 +474,7 @@ def findtracks(params):
 		item = xbmcgui.ListItem(ContextMenuColor % ('ЕЩЁ РЕЗУЛЬТАТЫ'), iconImage = '', thumbnailImage = '')
 		xbmcplugin.addDirectoryItem(plugin_handle, uri, item, True)
 	
-	xbmcplugin.endOfDirectory(plugin_handle)
-	
+	xbmcplugin.endOfDirectory(plugin_handle)	
 	
 def addtracktofavorites(params):	
 	url_=url['addtracktofavorites']+params['id']
@@ -453,7 +490,6 @@ def addtracktofavorites(params):
 	xbmc.log('[101.ru] %s' % (str(js['message'].encode('UTF-8'))), xbmc.LOGERROR)
 	xbmcgui.Dialog().ok(_addon_name, str(js['message'].encode('UTF-8')))
 
-	
 def addcurrenttrack(params):
 	if not xbmc.Player().isPlayingAudio():
 		xbmc.executebuiltin("XBMC.Notification(plugin.audio.101, Audio не проигрывается, 5000)")
@@ -474,7 +510,7 @@ def addcurrenttrack(params):
 		param = {}
 		param['id']  = cur_id
 		addtracktofavorites(param)		
-	elif (cur_pm == 'json') or (cur_pm == 'rtmp'):
+	else:#elif (cur_pm == 'json') or (cur_pm == 'rtmp'):
 		url_ = url['getplayingtrackinfo']+cur_id
 		
 		js = Get_url(url_, JSON=True)
@@ -482,8 +518,7 @@ def addcurrenttrack(params):
 			param = {}
 			param['id']  = js['id']
 			addtracktofavorites(param)
-				
-	
+					
 #---------------------------
 params = get_params()
 mode = None
