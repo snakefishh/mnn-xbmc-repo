@@ -137,18 +137,18 @@ if sys.argv[1] == 'start':
 			settimer(str(h),str(m),'0')
 		
 elif sys.argv[1] == 'chsettings':
-	xbmc.executebuiltin('XBMC.CancelAlarm(jtv, silent)')
+	xbmc.executebuiltin('XBMC.CancelAlarm(jtv, True)')
 	if s['enabled']=='true': settimer(0,0,5)
 	
 elif sys.argv[1] == 'onTimer':	
 	getjtv()
 	nextstart = datetime.now()+timedelta(days=int(s['interval']))
 	_addon.setSetting("nextstart", nextstart.strftime('%Y-%m-%d %H:%M:%S'))
-	xbmc.executebuiltin('XBMC.CancelAlarm(jtv, silent)')
+	xbmc.executebuiltin('XBMC.CancelAlarm(jtv, True)')
 	settimer(str(int(s['interval'])*24),'0','0')
 	
 elif sys.argv[1] == 'update':	
-	xbmc.executebuiltin('XBMC.AlarmClock(jtv,XBMC.RunScript(script.service.jtvtoxmltv, onTimer),%s:%s:%s)'%(0,0,5))
+	xbmc.executebuiltin('XBMC.AlarmClock(jtv,XBMC.RunScript(script.service.jtvtoxmltv, onTimer),%s:%s:%s ,silent)'%(0,0,5))
 	#getjtv()
 
 elif  sys.argv[1] == 'IptvSimple_settings':
