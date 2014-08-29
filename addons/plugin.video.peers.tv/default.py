@@ -3,7 +3,7 @@
 
 import urllib, urllib2, re, sys, os, json, datetime
 import xbmcplugin, xbmcgui, xbmcaddon, xbmc
-from BeautifulSoup import BeautifulSoup
+from BeautifulSoup import BeautifulSoup, CData as CData1
 
 _addon_name 	= 'plugin.video.peers.tv'
 _addon 			= xbmcaddon.Addon(id = _addon_name)
@@ -70,41 +70,56 @@ def Get_url(url, headers={}, Post = None, GETparams={}, JSON=False):
 
 def getchannels():	
 	Data  = Get_url('http://peers.tv')
-	soup = BeautifulSoup(Data)
-	soup = soup.find('dl', id="prog-chalist")
-	alltega= soup.findAll('a')
+	soup = BeautifulSoup(Data)	
+	
+	cdata = soup.find(text=re.compile("cntv\._cc_program_init = cntv\.program\.init\.bind"))		
+	liveurl = re.compile('"url": "(.+?)".+?"stream": "(.+?)"').findall(str(cdata))	
+	distlu={}
+	for lu in liveurl:
+		distlu[lu[0]]=str(lu[1]).replace('\\', '')
+
+	progch = soup.find('dl', id="prog-chalist")
+	alltega= progch.findAll('a')
 
 	if alltega:
 		for tega in alltega:
-			channelAlias = re.match('/program/(.+?)/' ,tega['href']).group(1)
+			try:
+				locked=tega['class']
+			except:
+				locked=''
+			
+			channelAlias = re.match('/program/(.+?)/' ,tega['href']).group(1)			
 			channelId    = tega['data-id']
 			img          = tega.i.img['src']
-			title        = tega.b.contents[0].encode('UTF-8')
+			title =tega.b.contents[0].encode('UTF-8')
+			if locked:
+				title = '[L] '+title
+				
 			
 			oldpng = re.search('/([0-9]+?).png', img).group(1)
 			newpng = img.replace(oldpng, str(int(oldpng)-2))		
 			img = 'http://peers.tv'+newpng 
 
-			uri = '%s?%s' % (sys.argv[0], urllib.urlencode({'mode':'getprogram' if _addon.getSetting("arh")=='true' else 'getmenu', 'id':channelId, 'channelAlias':channelAlias}))
+			uri = '%s?%s' % (sys.argv[0], urllib.urlencode({'mode':'getprogram' if _addon.getSetting("arh")=='true' else 'getmenu', 'id':channelId, 'channelAlias':channelAlias,'liveurl':distlu[channelAlias]}))
 			item = xbmcgui.ListItem(title, iconImage = img, thumbnailImage = img)
 			item.setInfo(type="Video", infoLabels={"Title": title})
 			xbmcplugin.addDirectoryItem(plugin_handle, uri, item, True)					
 		xbmcplugin.endOfDirectory(plugin_handle)
 
 def getmenu(params):	
-	
-	filesurl = 'http://hls.cn.ru/streaming/%s/16/tvrec/playlist.m3u8'%(params['channelAlias'])
-	uri = '%s?%s' % (sys.argv[0], urllib.urlencode({'mode':'play','title':'' ,'playurl':filesurl}))
+	liveurl = urllib.unquote_plus(params['liveurl'])
+	uri = '%s?%s' % (sys.argv[0], urllib.urlencode({'mode':'play','title':'' ,'playurl':liveurl}))
 	item = xbmcgui.ListItem('Прямая трансляция', iconImage = '', thumbnailImage = '')
 	xbmcplugin.addDirectoryItem(plugin_handle, uri, item, False)
 	
-	uri = '%s?%s' % (sys.argv[0], urllib.urlencode({'mode':'getprogram', 'id':params['id'], 'channelAlias':params['channelAlias']}))
+	uri = '%s?%s' % (sys.argv[0], urllib.urlencode({'mode':'getprogram', 'id':params['id'], 'channelAlias':params['channelAlias'], 'liveurl':liveurl}))
 	item = xbmcgui.ListItem('АРХИВ', iconImage = '', thumbnailImage = '')
 	xbmcplugin.addDirectoryItem(plugin_handle, uri, item, True)					
 		
-	xbmcplugin.endOfDirectory(plugin_handle)	
+	xbmcplugin.endOfDirectory(plugin_handle)
 				
 def getprogram(params):
+	liveurl = urllib.unquote_plus(params['liveurl'])	
 	updateListing=True
 	try:
 		prgdate = urllib.unquote_plus(params["date"])
@@ -125,7 +140,7 @@ def getprogram(params):
 	for k in prgdatelst:
 		if k['recs']==True:
 			prgtitle = k['date'][3:5]+'/'+k['date'][0:2]+'/'+k['date'][6:10]
-			uri = '%s?%s' % (sys.argv[0], urllib.urlencode({'mode':'getprogram', 'id':params['id'], 'date':k['date'], 'channelAlias':params['channelAlias']}))
+			uri = '%s?%s' % (sys.argv[0], urllib.urlencode({'mode':'getprogram', 'id':params['id'], 'date':k['date'], 'channelAlias':params['channelAlias'], 'liveurl':liveurl}))
 			item = xbmcgui.ListItem(prgtitle, iconImage = '', thumbnailImage = '')
 			xbmcplugin.addDirectoryItem(plugin_handle, uri, item, True)	
 		
@@ -146,13 +161,13 @@ def getprogram(params):
 				ctitle = title
 				if onair:
 					ctitle = '[COLOR FFE169E1]%s[/COLOR]'%(title)
-					filesurl = 'http://hls.cn.ru/streaming/%s/16/tvrec/playlist.m3u8'%(params['channelAlias'])		
+					filesurl = liveurl		
 				else:
 					for j in i['files']:
 						filesurl = j['movie']	
 					if filesurl: 
 						ctitle = '[COLOR FF4169E1]%s[/COLOR]'%(title)
-			
+							
 				info = {}
 				info["title"] = title
 				info['plot']  = i['desc'].replace('&nbsp;',' ').replace('&laquo;', '"').replace('&raquo;', '"').replace('&mdash;', '-').replace('<br />',chr(13)).replace('&#x2011;', '-')
@@ -186,6 +201,7 @@ def play(params):
 #	
 #	Data=Get_url(Url_)
 #	links = re.compile('(http://.+?\.ts)').findall(Data)
+#	
 #	#print links
 #	
 #	#sys.exit()
@@ -195,11 +211,13 @@ def play(params):
 #		
 #			
 #	for Url_ in links:
+#		Url_ = Url_ .replace('/16/','/126/')
+#		print Url_ 
 #		item = xbmcgui.ListItem(title, iconImage = '', thumbnailImage = '')
 #		item.setInfo(type="Video", infoLabels={"Title":title})		
 #		playList.add(Url_,item)
 #	xbmc.Player().play(playList)
-		
+#		
 ################################
 	
 
