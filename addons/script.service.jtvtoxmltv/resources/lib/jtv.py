@@ -17,7 +17,7 @@ def filetime_to_dt(ft):
 	
 def jtvtoxml(jtvunzip_path, urljtv, locat):
 			
-	if not os.path.exists(jtvunzip_path):os.mkdir(jtvunzip_path)
+	if not os.path.exists(jtvunzip_path):os.makedirs(jtvunzip_path)
 		
 	if locat=='1':
 		webFile = urllib.urlopen(urljtv)

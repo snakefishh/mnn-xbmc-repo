@@ -38,7 +38,7 @@
 
 <addon id="script.service.jtvtoxmltv"
        name="JTV To XmlTV"
-       version="0.0.2"
+       version="0.0.3"
        provider-name="MazurokNN">
   <requires>
     <import addon="xbmc.python" version="2.1.0"/>
