@@ -34,7 +34,31 @@ def get_params():
 				param[splitparams[0]]=splitparams[1]   
 	return param
 
-def Get_url(url, headers={}, Post = None, GETparams={}, JSON=False):
+def checkproxy(proxy):
+	try:
+		proxy_h = urllib2.ProxyHandler({'http': proxy})
+		opener = urllib2.build_opener(proxy_h)
+
+		opener.addheaders = [('User-agent', User_Agent)]
+		urllib2.install_opener(opener)
+		req=urllib2.Request('http://www.google.com')
+		response=urllib2.urlopen(req)
+		if (response.read().index('<title>Google</title>'))>=0:
+			return True
+	except:
+		return False
+	return True
+	
+def Get_url(url, headers={}, Post = None, GETparams={}, JSON=False, Proxy=None):
+	if Proxy:
+		proxy_h = urllib2.ProxyHandler({'http': Proxy})
+		opener = urllib2.build_opener(proxy_h)
+		opener.addheaders = [('User-agent', User_Agent)]
+		urllib2.install_opener(opener)
+	else:
+		opener = urllib2.build_opener()
+		urllib2.install_opener(opener)
+	
 	if GETparams:
 		url = "%s?%s" % (url, urllib.urlencode(GETparams))
 	if Post:
@@ -68,8 +92,12 @@ def Get_url(url, headers={}, Post = None, GETparams={}, JSON=False):
 		Data = js	
 	return Data
 
-def getchannels():	
-	Data  = Get_url('http://peers.tv')
+def getchannels():
+	if _addon.getSetting("proxy")=='true': proxy=_addon.getSetting("proxyip") 
+	else: proxy=''
+	Data  = Get_url('http://peers.tv', Proxy=proxy)
+	if not Data:return(1)
+	
 	soup = BeautifulSoup(Data)	
 	
 	cdata = soup.find(text=re.compile("cntv\._cc_program_init = cntv\.program\.init\.bind"))		
@@ -129,7 +157,11 @@ def getprogram(params):
 		
 	prgdate_url = prgdate[6:10]+'-'+prgdate[0:2]+'-'+prgdate[3:5]
 	url_ = 'http://peers.tv/ajax/program/%s/%s/'%(params['id'],prgdate_url)	
-	js = Get_url(url_,JSON=True)
+	
+	if _addon.getSetting("proxy")=='true': proxy=_addon.getSetting("proxyip") 
+	else: proxy=''
+	js = Get_url(url_,JSON=True, Proxy=proxy)
+	if not js:return(1)
 	
 	prgdatelst   = js['week']
 	if _addon.getSetting("sort")=='0':
