@@ -3,24 +3,25 @@
 
 import urllib, urllib2, re, sys, os, json, datetime
 import xbmcplugin, xbmcgui, xbmcaddon, xbmc
-#from BeautifulSoup import BeautifulSoup, CData as CData1
 
 _addon_name 	= 'plugin.video.smart.tvrain.ru'
 _addon 			= xbmcaddon.Addon(id = _addon_name)
-_addon_url		= sys.argv[0]
 plugin_handle	= int(sys.argv[1])
-_addon_patch 	= xbmc.translatePath(_addon.getAddonInfo('path'))
-if sys.platform == 'win32': _addon_patch = _addon_patch.decode('utf-8')
+#_addon_patch 	= xbmc.translatePath(_addon.getAddonInfo('path'))
+#if sys.platform == 'win32': _addon_patch = _addon_patch.decode('utf-8')
 
 #sys.path.append(os.path.join(_addon_patch, 'resources', 'lib'))
 #xbmcplugin.setContent(plugin_handle, 'movies')
 
-User_Agent = 'Mozilla/5.0 (Windows NT 6.1; WOW64; rv:31.0) Gecko/20100101 Firefox/31.0'
-url = {}
-url['schedule'] = 'https://api.tvrain.ru/api_v2/schedule/'                       #программа
-url['ourchoice']= 'https://api.tvrain.ru/api_v2/widgets/ourchoice/'              #наш выбор
-url['popular']= 'https://api.tvrain.ru/api_v2/widgets/popular/'                  #популярное
-
+Headers ={'Accept'                      :'application/tvrain.api.2.8+json',
+          'Accept-Language'             :'ru-RU,ru;q=0.8,en-US;q=0.5,en;q=0.3',
+          'Accept-Encoding'             :'gzip, deflate',
+          'X-User-Agent'                :'TV Client (Browser); API_CONSUMER_KEY=a908545f-80af-4f99-8dac-fb012cec',
+          'Content-Type'                :'application/x-www-form-urlencoded',
+          'Referer'                     :'http://smarttv.tvrain.ru/',
+          'Origin'                      :'http://smarttv.tvrain.ru', 
+          'Connection'                  :'keep-alive',
+		  }
 
 def get_params():
 	param=[]
@@ -39,29 +40,21 @@ def get_params():
 				param[splitparams[0]]=splitparams[1]   
 	return param
 	
-def Get_url(url, headers={}, Post = None, GETparams={}, JSON=False, Proxy=None, retinfo=False):
-	if Proxy:
-		proxy_h = urllib2.ProxyHandler({'http': Proxy})
-		opener = urllib2.build_opener(proxy_h)
-		opener.addheaders = [('User-agent', User_Agent)]
-		urllib2.install_opener(opener)
-	else:
-		opener = urllib2.build_opener()
-		urllib2.install_opener(opener)
+def Get_url(url, headers={}, Post = None, GETparams={}, JSON=False):
 	
 	if GETparams:
 		url = "%s?%s" % (url, urllib.urlencode(GETparams))
 	if Post:
 		Post = urllib.urlencode(Post)		
 	req = urllib2.Request(url, Post)
-	req.add_header("User-Agent", User_Agent)
+	#req.add_header("User-Agent", User_Agent)
 	
 	for key, val in headers.items():
 		req.add_header(key, val)
 	try:
 		response = urllib2.urlopen(req)
 	except (urllib2.HTTPError, urllib2.URLError), e:
-		xbmc.log('[plugin.video.peers.tv] %s' % e, xbmc.LOGERROR)
+		xbmc.log('[%s] %s' %(_addon_name, e), xbmc.LOGERROR)
 		xbmcgui.Dialog().ok(' ОШИБКА', str(e))
 		return None	
 	try:
@@ -76,52 +69,39 @@ def Get_url(url, headers={}, Post = None, GETparams={}, JSON=False, Proxy=None, 
 		try:
 			js = json.loads(Data)
 		except Exception, e:
-			xbmc.log('[plugin.video.peers.tv] %s' % e, xbmc.LOGERROR)
+			xbmc.log('[%s] %s' %(_addon_name, e), xbmc.LOGERROR)
 			xbmcgui.Dialog().ok(' ОШИБКА', str(e))
 			return None
-		Data = js	
-	if retinfo:return Data, response.info()
-	else:return Data
+		Data = js		
+	return Data
 
 def start(params):
-
-		uri = '%s?%s' % (sys.argv[0], urllib.urlencode({'mode':'programscat'}))
-		item = xbmcgui.ListItem('Программы', iconImage = '', thumbnailImage = '')
-		item.setInfo(type="Video", infoLabels={"Title": 'Программы'})
-		xbmcplugin.addDirectoryItem(plugin_handle, uri, item, True)		
+	def add_dir(title, mode, img=''):
+		uri = '%s?%s' % (sys.argv[0], urllib.urlencode({'mode':mode}))
+		item = xbmcgui.ListItem(title, iconImage = img, thumbnailImage = img)
+		xbmcplugin.addDirectoryItem(plugin_handle, uri, item, True)	
 				
-		uri = '%s?%s' % (sys.argv[0], urllib.urlencode({'mode':'ourchoice'}))
-		item = xbmcgui.ListItem('Наш Выбор', iconImage = '', thumbnailImage = '')
-		item.setInfo(type="Video", infoLabels={"Title": 'Наш Выбор'})
-		xbmcplugin.addDirectoryItem(plugin_handle, uri, item, True)		
+	#add_dir('Эфир', 'live')
+	add_dir('Программы', 'programscat')
+	add_dir('Наш Выбор', 'ourchoice')
+	add_dir('Популярное', 'popular')
 		
-		uri = '%s?%s' % (sys.argv[0], urllib.urlencode({'mode':'popular'}))
-		item = xbmcgui.ListItem('Популярное', iconImage = '', thumbnailImage = '')
-		item.setInfo(type="Video", infoLabels={"Title": 'Популярное'})
-		xbmcplugin.addDirectoryItem(plugin_handle, uri, item, True)		
-		
-		xbmcplugin.endOfDirectory(plugin_handle)
+	xbmcplugin.endOfDirectory(plugin_handle)
 	
 	
+def live(params):
+	
+	url_ = 'https://api.tvrain.ru/api_v2/live/'
+	Data = Get_url(url_, Headers, JSON=True)
+	print Data
+	
+	for i in Data:
+		print Data[i][0]['label'].encode('UTF-8')
 	
 	
 def ourchoice(params):
-	
-	Headers ={'User-Agent'                  :'Mozilla/5.0 (Windows NT 6.1; WOW64; rv:31.0) Gecko/20100101 Firefox/31.0',
-		      'Accept'                      :'application/tvrain.api.2.8+json',
-			  'Accept-Language'             :'ru-RU,ru;q=0.8,en-US;q=0.5,en;q=0.3',
-			  'Accept-Encoding'             :'gzip, deflate',
-			  'X-User-Agent'                :'TV Client (Browser); API_CONSUMER_KEY=a908545f-80af-4f99-8dac-fb012cec',
-			  'Content-Type'                :'application/x-www-form-urlencoded',
-			  'X-Result-Define-Thumb-Width' :'200',
-			  'X-Result-Define-Thumb-height':'110',
-			  'Referer'                     :'http://smarttv.tvrain.ru/',
-			  'Origin'                      :'http://smarttv.tvrain.ru',
-			 
-			  'Connection'                  :'keep-alive',
-	         }
 
-	url_ = url['ourchoice']
+	url_ = 'https://api.tvrain.ru/api_v2/widgets/ourchoice/'
 	Data = Get_url(url_, Headers, JSON=True)
 	for i in Data:
 		uri = '%s?%s' % (sys.argv[0], urllib.urlencode({'mode':'play', 'id':i['id']}))
@@ -131,48 +111,20 @@ def ourchoice(params):
 		
 	xbmcplugin.endOfDirectory(plugin_handle)
 	
-
-
 def popular(params):
-	
-	Headers ={'User-Agent'                  :'Mozilla/5.0 (Windows NT 6.1; WOW64; rv:31.0) Gecko/20100101 Firefox/31.0',
-		      'Accept'                      :'application/tvrain.api.2.8+json',
-			  'Accept-Language'             :'ru-RU,ru;q=0.8,en-US;q=0.5,en;q=0.3',
-			  'Accept-Encoding'             :'gzip, deflate',
-			  'X-User-Agent'                :'TV Client (Browser); API_CONSUMER_KEY=a908545f-80af-4f99-8dac-fb012cec',
-			  'Content-Type'                :'application/x-www-form-urlencoded',
-			  'X-Result-Define-Thumb-Width' :'200',
-			  'X-Result-Define-Thumb-height':'110',
-			  'Referer'                     :'http://smarttv.tvrain.ru/',
-			  'Origin'                      :'http://smarttv.tvrain.ru',
-			 
-			  'Connection'                  :'keep-alive',
-	         }
 
-	url_ = url['popular']
+	url_ = 'https://api.tvrain.ru/api_v2/widgets/popular/' 
 	Data = Get_url(url_, Headers, JSON=True)
 
 	for i in Data['elements']:
 		uri = '%s?%s' % (sys.argv[0], urllib.urlencode({'mode':'play', 'id':i['id']}))
 		item = xbmcgui.ListItem(i['name'].encode('UTF-8'), iconImage = '', thumbnailImage = '')
-		item.setInfo(type="Video", infoLabels={"Title": 'Наш Выбор'})
+		item.setInfo(type="Video", infoLabels={"Title": ''})
 		xbmcplugin.addDirectoryItem(plugin_handle, uri, item, True)		
 		
 	xbmcplugin.endOfDirectory(plugin_handle)	
 	
 def programscat(params):
-
-	Headers ={'User-Agent'                  :'Mozilla/5.0 (Windows NT 6.1; WOW64; rv:31.0) Gecko/20100101 Firefox/31.0',
-		      'Accept'                      :'application/tvrain.api.2.8+json',
-			  'Accept-Language'             :'ru-RU,ru;q=0.8,en-US;q=0.5,en;q=0.3',
-			  'Accept-Encoding'             :'gzip, deflate',
-			  'X-User-Agent'                :'TV Client (Browser); API_CONSUMER_KEY=a908545f-80af-4f99-8dac-fb012cec',
-			  'Content-Type'                :'application/x-www-form-urlencoded',
-			  'Referer'                     :'http://smarttv.tvrain.ru/',
-			  'Origin'                      :'http://smarttv.tvrain.ru',
-			 
-			  'Connection'                  :'keep-alive',
-	         }
 
 	url_ = 'https://api.tvrain.ru/api_v2/programs/categories/'
 	Data = Get_url(url_, Headers, JSON=True)
@@ -192,25 +144,12 @@ def programscat(params):
 	xbmcplugin.endOfDirectory(plugin_handle)
 	
 def programs(params):
-
-
-	Headers ={'User-Agent'                  :'Mozilla/5.0 (Windows NT 6.1; WOW64; rv:31.0) Gecko/20100101 Firefox/31.0',
-		      'Accept'                      :'application/tvrain.api.2.8+json',
-			  'Accept-Language'             :'ru-RU,ru;q=0.8,en-US;q=0.5,en;q=0.3',
-			  'Accept-Encoding'             :'gzip, deflate',
-			  'X-User-Agent'                :'TV Client (Browser); API_CONSUMER_KEY=a908545f-80af-4f99-8dac-fb012cec',
-			  'Content-Type'                :'application/x-www-form-urlencoded',
-			  'X-Result-Define-Thumb-Width' :'200',
-			  'X-Result-Define-Thumb-height':'266',
-			  'X-Result-Define-Pagination'	:'1/250', #откуда 250 ()
-			  'Referer'                     :'http://smarttv.tvrain.ru/',
-			  'Origin'                      :'http://smarttv.tvrain.ru',
-			 
-			  'Connection'                  :'keep-alive',
-	         }
+	
+	Headers_=Headers
+	Headers_['X-Result-Define-Pagination']='1/250' #Почему 250
 	
 	url_ = 'https://api.tvrain.ru/api_v2/programs/'
-	Data = Get_url(url_, Headers, JSON=True)
+	Data = Get_url(url_, Headers_, JSON=True)
 	
 	if params['catid']=='pop':
 		filter='is_cool'
@@ -231,29 +170,19 @@ def programs(params):
 	
 def programid(params):
 	
-
-
-	Headers ={'User-Agent'                     :'Mozilla/5.0 (Windows NT 6.1; WOW64; rv:31.0) Gecko/20100101 Firefox/31.0',
-		      'Accept'                         :'application/tvrain.api.2.8+json',
-			  'Accept-Language'                :'ru-RU,ru;q=0.8,en-US;q=0.5,en;q=0.3',
-			  'Accept-Encoding'                :'gzip, deflate',
-			  'X-User-Agent'                   :'TV Client (Browser); API_CONSUMER_KEY=a908545f-80af-4f99-8dac-fb012cec',
-			  'Content-Type'                   :'application/x-www-form-urlencoded',
-			  'X-Result-Define-Thumb-Width'    :'200',
-			  'X-Result-Define-Thumb-height'   :'110',
-			  'X-Result-Define-Video-Only-Flag':'1',
-			  'X-Result-Define-Pagination'	   :'1/20',#номер страницы / элементов в странице
-			  'Referer'                        :'http://smarttv.tvrain.ru/',
-			  'Origin'                         :'http://smarttv.tvrain.ru', 
-			  'Connection'                     :'keep-alive',
-	         }
-
+	try:
+		page = params['page']
+	except:
+		page ='1'
+	
+	Headers_=Headers
+	Headers_['X-Result-Define-Pagination'] = '%s/20'%(page)#номер страницы / элементов в странице]
 	url_ = 'https://api.tvrain.ru/api_v2/programs/%s/articles/'%(params['id'])
-	Data = Get_url(url_, Headers, JSON=True)
-
+	Data = Get_url(url_, Headers_, JSON=True)
 
 	current_page = Data['current_page']
 	total_pages  = Data['total_pages']
+
 	for i in Data['elements']:
 		print i
 		uri = '%s?%s' % (sys.argv[0], urllib.urlencode({'mode':'play','id':i['id']}))
@@ -261,36 +190,19 @@ def programid(params):
 		item.setInfo(type="Video", infoLabels={"Title": i['name'].encode('UTF-8')})
 		xbmcplugin.addDirectoryItem(plugin_handle, uri, item, True)	
 	
-	
-	
+	print current_page, total_pages
+	if current_page<total_pages:
+		uri = '%s?%s' % (sys.argv[0], urllib.urlencode({'mode':'programid','id':params['id'],'page':current_page+1}))
+		item = xbmcgui.ListItem('Далее > %s из %s'%(str(current_page+1),str(total_pages)), iconImage = '', thumbnailImage = '')
+		xbmcplugin.addDirectoryItem(plugin_handle, uri, item, True)	
 	
 	xbmcplugin.endOfDirectory(plugin_handle)	
-		
-
-	
+			
 def play(params):
-	Headers ={'User-Agent'                  :'Mozilla/5.0 (Windows NT 6.1; WOW64; rv:31.0) Gecko/20100101 Firefox/31.0',
-		      'Accept'                      :'application/tvrain.api.2.8+json',
-			  'Accept-Language'             :'ru-RU,ru;q=0.8,en-US;q=0.5,en;q=0.3',
-			  'Accept-Encoding'             :'gzip, deflate',
-			  'X-User-Agent'                :'TV Client (Browser); API_CONSUMER_KEY=a908545f-80af-4f99-8dac-fb012cec',
-			  'Content-Type'                :'application/x-www-form-urlencoded',
-			  'X-Result-Define-Thumb-Width' :'200',
-			  'X-Result-Define-Thumb-height':'110',
-			  'Referer'                     :'http://smarttv.tvrain.ru/',
-			  'Origin'                      :'http://smarttv.tvrain.ru',
-			 
-			  'Connection'                  :'keep-alive',
-	         }
-	
 	
 	url_ = 'https://api.tvrain.ru/api_v2/articles/%s/videos/' %(params['id'])
 	Data = Get_url(url_, Headers, JSON=True)
-	print Data	
 
-	
-	#title = urllib.unquote_plus(params['title'])
-	#Url_  = urllib.unquote_plus(params['playurl'])	
 	try: 
 		Url_  = Data[0]['mp4']['480p']
 	except:
@@ -298,42 +210,14 @@ def play(params):
 			Url_  = Data[0]['mp4']['360p']
 		except:
 			Url_  = Data[0]['mp4']['720p']	
-	
-	
+		
 	playList = xbmc.PlayList(xbmc.PLAYLIST_VIDEO)
 	playList.clear()	
 	
-	item = xbmcgui.ListItem('', iconImage = '', thumbnailImage = '')
-	#item.setInfo(type="Video", infoLabels={"Title":title})				
-				
+	item = xbmcgui.ListItem('Дождь', iconImage = '', thumbnailImage = '')				
 	playList.add(Url_,item)
 	xbmc.Player().play(playList)
 	
-	
-#	url_ = 'https://api.tvrain.ru/api_v2/articles/374827/videos/' #374827 из widgets/ourchoice/
-#	Data = Get_url(url_, Headers, JSON=True)
-#	print Data	
-
-
-		
-####################Дополнительная информация по программе можно https://api.tvrain.ru/api_v2/programs/
-#	url_ = 'https://api.tvrain.ru/api_v2/programs/1804/'
-#	Data = Get_url(url_, Headers, JSON=True)
-#	print Data
-#	print Data['1804']['detail_text'].encode('UTF-8')
-
-		
-		
-		
-################Выбор потока и качества для live
-#
-#	url_ = 'https://api.tvrain.ru/api_v2/live/'
-#	Data = Get_url(url_, Headers, JSON=True)
-#	print Data
-#	
-#	for i in Data:
-#		print Data[i][0]['label'].encode('UTF-8')
-
 #---------------------------
 params = get_params()
 mode = None
@@ -343,6 +227,8 @@ except:
 	pass
 if   mode == None:
 	start(params)
+elif mode == 'live':
+	live(params)
 elif mode == 'ourchoice':
 	ourchoice(params)
 elif mode == 'popular':
