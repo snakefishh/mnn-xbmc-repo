@@ -202,22 +202,21 @@ def play(params):
 	
 	url_ = 'https://api.tvrain.ru/api_v2/articles/%s/videos/' %(params['id'])
 	Data = Get_url(url_, Headers, JSON=True)
-
-	try: 
-		Url_  = Data[0]['mp4']['480p']
-	except:
-		try: 
-			Url_  = Data[0]['mp4']['360p']
-		except:
-			Url_  = Data[0]['mp4']['720p']	
-		
 	playList = xbmc.PlayList(xbmc.PLAYLIST_VIDEO)
 	playList.clear()	
-	
-	item = xbmcgui.ListItem('Дождь', iconImage = '', thumbnailImage = '')				
-	playList.add(Url_,item)
+	for i in Data:
+		try: 
+			Url_  = i['mp4']['480p']
+		except:
+			try: 
+				Url_  = i['mp4']['360p']
+			except:
+				Url_  = i['mp4']['720p']	
+		
+		item = xbmcgui.ListItem('Дождь- '+i['name'].encode('UTF-8'), iconImage = '', thumbnailImage = '')				
+		playList.add(Url_,item)
 	xbmc.Player().play(playList)
-	
+		
 #---------------------------
 params = get_params()
 mode = None
