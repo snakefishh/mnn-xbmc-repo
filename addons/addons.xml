@@ -36,6 +36,24 @@
   </extension>
 </addon>
 
+<addon id="plugin.video.smart.tvrain.ru"
+       name="smart.tvrain.ru"
+       version="0.0.1"
+       provider-name="MazurokNN">
+  <requires>
+    <import addon="xbmc.python" version="2.1.0"/>
+  </requires>
+  <extension point="xbmc.python.pluginsource"
+            library="default.py">
+        <provides>video</provides>
+  </extension>
+  <extension point="xbmc.addon.metadata">
+    <platform>all</platform>
+    <summary>smart.tvrain.ru</summary>
+    <description lang="ru">smart.tvrain.ru</description>
+  </extension>
+</addon>
+
 <addon id="script.service.jtvtoxmltv"
        name="JTV To XmlTV"
        version="0.0.3"
