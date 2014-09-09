@@ -60,7 +60,7 @@
 
 <addon id="plugin.video.videomore.ru"
        name="Videomore.ru (СТС Медиа) beta"
-       version="0.0.1"
+       version="0.0.2"
        provider-name="MazurokNN">
   <requires>
     <import addon="xbmc.python" version="2.1.0"/>

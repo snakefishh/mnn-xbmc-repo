@@ -211,7 +211,6 @@ class Database:
 			Data = Get_url(uri,JSON=True)
 
 			for i in Data:
-				print i['title'].encode('UTF-8')
 				self.cursor.execute('INSERT INTO tracks (project_id, season, episode_of_season, title, tvurl) VALUES ("%s", "%s", "%s", "%s", "%s");'%(id, i['season_id'], i['episode_of_season'], i['title'].replace('"','\''), i['tv']))
 			
 			self.cursor.execute('UPDATE projects SET tracks_lastupdate="%s" WHERE project_id="%s"'% (datetime.now(), id))
@@ -237,7 +236,10 @@ class Database:
 		return tr
 	
 	def search(self, val):
-		uri = construct_get('suggestions', {'q':urllib.quote(val)})
-		print uri
-	
-	
+		self.Connect()
+		uri = construct_get('suggestions', {'q':val})
+		Data = Get_url(uri,JSON=True)
+		self.Disconnect()
+		return Data
+		
+		

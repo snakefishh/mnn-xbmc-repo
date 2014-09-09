@@ -51,6 +51,7 @@ def start(params):
 	except:
 		add_dir('Категории', '', '1')
 		add_dir('Каналы'   , '', '2')
+		add_dir('Поиск'   , 'search', '0')
 	else:
 		if mod == '1':
 			add_dir('Популярные', 'get_cat', '0')
@@ -63,7 +64,7 @@ def start(params):
 			add_dir('Перец', 'get_ch', '5')
 			add_dir('-----', 'get_ch', '0')
 			#add_dir('РЕН-ТВ', 'get_ch', '3')
-			#add_dir('5 Канал', 'get_ch', '4')
+			#add_dir('5 Канал', 'get_ch', '4')					
 	xbmcplugin.endOfDirectory(plugin_handle)
 	
 def get_cat(params):
@@ -118,13 +119,26 @@ def play(params):
 	playList = xbmc.PlayList(xbmc.PLAYLIST_VIDEO)
 	playList.clear()	
 	
-	#db = Database(db_name)
-	#db.search('войны')
+
+	
 	
 	item = xbmcgui.ListItem(title, iconImage = '', thumbnailImage = '')				
 	playList.add(uri,item)
 	xbmc.Player().play(playList)
-		
+
+def search(params):
+	kb = xbmc.Keyboard('', 'Поиск', False)
+	kb.doModal()
+	if not kb.isConfirmed(): return
+	val=kb.getText()
+	db = Database(db_name)
+	res = db.search(val)
+	for i in res:
+		uri = '%s?%s' % (sys.argv[0], urllib.urlencode({'mode':'season', 'id':i[0]}))
+		item = xbmcgui.ListItem(i[1].encode('UTF-8'), iconImage = '', thumbnailImage = '')
+		xbmcplugin.addDirectoryItem(plugin_handle, uri, item, True)	
+	xbmcplugin.endOfDirectory(plugin_handle)
+	
 #---------------------------
 params = get_params()
 mode = None
@@ -144,4 +158,6 @@ elif   mode == 'tracks':
 	tracks(params)	
 elif   mode == 'play':
 	play(params)		
+elif   mode == 'search':
+	search(params)	
 	
