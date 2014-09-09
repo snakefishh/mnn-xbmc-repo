@@ -58,6 +58,25 @@
   </extension>
 </addon>
 
+<addon id="plugin.video.videomore.ru"
+       name="Videomore.ru (СТС Медиа) beta"
+       version="0.0.1"
+       provider-name="MazurokNN">
+  <requires>
+    <import addon="xbmc.python" version="2.1.0"/>
+  </requires>
+  <extension point="xbmc.python.pluginsource"
+            library="default.py">
+        <provides>video</provides>
+  </extension>
+  <extension point="xbmc.addon.metadata">
+    <platform>all</platform>
+    <summary>Социальная телевизионная сеть «Видеоморе» (www.videomore.ru)</summary>
+    <description lang="ru"> На Videomore.ru вы можете посмотреть сериалы, шоу, программы и фильмы, транслируемые на каналах «СТС», «Домашний», «Перец», «РЕН ТВ» и «5 канал».
+</description>
+  </extension>
+</addon>
+
 <addon id="script.service.jtvtoxmltv"
        name="JTV To XmlTV"
        version="0.0.3"
