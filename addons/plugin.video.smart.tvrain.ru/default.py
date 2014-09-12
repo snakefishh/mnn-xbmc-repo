@@ -1,11 +1,17 @@
 #!/usr/bin/python
 # -*- coding: utf-8 -*-
 
-import urllib, urllib2, re, sys, os, json, datetime
+import urllib, urllib2, re, sys, os, json, datetime, time
+
 import xbmcplugin, xbmcgui, xbmcaddon, xbmc
 
-_addon_name 	= 'plugin.video.smart.tvrain.ru'
-_addon 			= xbmcaddon.Addon(id = _addon_name)
+_addon_name 	 = 'plugin.video.smart.tvrain.ru'
+_addon 			 = xbmcaddon.Addon(id = _addon_name)
+_addon_patch 	 = xbmc.translatePath(_addon.getAddonInfo('path'))
+
+if (sys.platform == 'win32') or (sys.platform == 'win64'):
+	_addon_patch     = _addon_patch.decode('utf-8')
+
 plugin_handle	= int(sys.argv[1])
 
 xbmcplugin.setContent(plugin_handle, 'movies')
@@ -15,11 +21,13 @@ Headers ={'Accept'                      :'application/tvrain.api.2.8+json',
           'Accept-Encoding'             :'gzip, deflate',
           'X-User-Agent'                :'TV Client (Browser); API_CONSUMER_KEY=a908545f-80af-4f99-8dac-fb012cec',
           'Content-Type'                :'application/x-www-form-urlencoded',
+		  'X-Result-Define-Thumb-Width' :'200',
+		  'X-Result-Define-Thumb-height':'110',
           'Referer'                     :'http://smarttv.tvrain.ru/',
           'Origin'                      :'http://smarttv.tvrain.ru', 
           'Connection'                  :'keep-alive',
 		  }
-
+		  
 def get_params():
 	param=[]
 	paramstring=sys.argv[2]
@@ -80,13 +88,42 @@ def AddItem(title, url={}, isFolder=True, img='', ico='', info={}, property={}):
 	xbmcplugin.addDirectoryItem(plugin_handle, uri, item, isFolder)
 
 	
-def start(params):				
-	AddItem('Эфир',      {'mode':'live'})
-	AddItem('Популярное',{'mode':'popular'})
-	AddItem('Наш Выбор', {'mode':'ourchoice'})
-	AddItem('Программы', {'mode':'programscat'})
+def start(params):
+	AddItem('Эфир',              {'mode':'live'})
+	#AddItem('Последние передачи',{'mode':'schedule'})			
+	AddItem('Популярное',        {'mode':'popular'})
+	AddItem('Наш Выбор',         {'mode':'ourchoice'})
+	AddItem('Программы',         {'mode':'programscat'})
 	xbmcplugin.endOfDirectory(plugin_handle)
 		
+def schedule(params): 
+	try:
+		program_id= params['program_id']
+	except:
+		program_id = None
+	
+	if not program_id:
+		url_ = 'https://api.tvrain.ru/api_v2/schedule/2014-09-11'
+		Data = Get_url(url_, Headers, JSON=True)
+		#print Data
+		for i in Data:
+			str_dt = re.match('^.{3}, \d\d .{3} \d\d \d\d:\d\d:\d\d', i['date_start']).group(0) #Fri, 12 Sep 14 06:00:00 
+			dt = datetime.fromtimestamp(time.mktime(time.strptime(str_dt, '%a, %d %b %y %H:%M:%S')))
+			title = '[COLOR FF4169E1]%s  [/COLOR]'%(dt.strftime('%d/%m %H:%M'))+ i['program_name']
+			AddItem(title, url={'mode':'schedule', 'program_id':i['program_id'], 'date_start':i['date_start']}, img = i['tv_img'])
+	else:
+		url_ = 'https://api.tvrain.ru/api_v2/programs/%s/articles/'%(program_id)
+		date_start =urllib.unquote_plus(params['date_start'])
+		Data = Get_url(url_, Headers, JSON=True)
+		for i in Data['elements']:
+			#if i['date_active_start']==params['date_start']:
+			print '====='
+			print date_start
+			print i['date_active_start']
+	
+	xbmcplugin.endOfDirectory(plugin_handle)
+
+
 def live(params):
 	url_ = 'https://api.tvrain.ru/api_v2/live/'
 	Data = Get_url(url_, Headers, JSON=True)
@@ -113,6 +150,7 @@ def popular(params):
 		period = None
 	
 	if period:
+		novideo = _addon.getSetting('novideo')
 		Headers_=Headers
 		Headers_['X-Result-Define-Period'] = '%s'%(period)
 		url_ = 'https://api.tvrain.ru/api_v2/widgets/popular/' 
@@ -120,10 +158,11 @@ def popular(params):
 
 		for i in Data['elements']:
 			if i['program_id'] == 1018: #нет видио
-				title ='[NEWS] '+ i['name'].encode('UTF-8')
+				if novideo == 'true': continue
+				title ='[NO Video] '+ i['name'].encode('UTF-8')
 			else:
 				title = i['name'].encode('UTF-8')
-				
+			
 			info={'type':'Video', 'Title':'Популярное', 'plot':title,'genre':'Популярное'}
 			property={'fanart_image':i['preview_img']}
 			AddItem(title, {'mode':'play', 'id':i['id']}, isFolder=False, img= i['preview_img'], info=info, property=property)			
@@ -196,6 +235,7 @@ def play(params):
 	url_ = 'https://api.tvrain.ru/api_v2/articles/%s/videos/' %(params['id'])
 	Data = Get_url(url_, Headers, JSON=True)
 	
+	if not Data:return
 	dialog = xbmcgui.Dialog()
 	dialog_items = []
 	for i in Data[0]['mp4']:
