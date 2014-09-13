@@ -13,23 +13,6 @@ plugin_handle	= int(sys.argv[1])
 User_Agent = 'Mozilla/5.0 (Windows NT 6.1; WOW64; rv:31.0) Gecko/20100101 Firefox/31.0'
 Headers    ='|User-Agent=' + urllib.quote_plus('Mozilla/5.0 (Windows NT 6.1; WOW64; rv:31.0) Gecko/20100101 Firefox/31.0')+'&Referer='    + urllib.quote_plus('http://pdd.a42.ru/vendors/osmf/SMPHLS.swf')
 
-def get_params():
-	param=[]
-	paramstring=sys.argv[2]
-	if len(paramstring)>=2:
-		params=sys.argv[2]
-		cleanedparams=params.replace('?','')
-		if (params[len(params)-1]=='/'):
-			params=params[0:len(params)-2]
-		pairsofparams=cleanedparams.split('&')
-		param={}
-		for i in range(len(pairsofparams)):
-			splitparams={}
-			splitparams=pairsofparams[i].split('=')
-			if (len(splitparams))==2:
-				param[splitparams[0]]=splitparams[1]   
-	return param
-
 def AddItem(title, url={}, isFolder=True, img='', ico='', info={}, property={}):
 	uri = '%s?%s' % (sys.argv[0], urllib.urlencode(url))
 	item = xbmcgui.ListItem(title, iconImage = ico, thumbnailImage = img)
@@ -70,26 +53,40 @@ def start(params):
 			PLitem = xbmcgui.ListItem(city[1]+' - '+j.string.encode('UTF-8'), iconImage = '', thumbnailImage = '')
 			PLitem.setInfo(type="Video", infoLabels={"Title":j.string.encode('UTF-8')})
 			PLitem.setProperty("cityname",city[1])
-			playList.add(Url+Headers,PLitem, -1)
-		
+			playList.add(Url+Headers,PLitem)	
 	xbmcplugin.endOfDirectory(plugin_handle)
 
 def kam(params):
 	city = urllib.unquote_plus(params['city'])
-	for j in range(0, playList.size()):
-		
+	for j in range(0, playList.size()):		
 		it = playList.__getitem__(int(j))
-		if (it.getProperty('cityname') == city):
-			
+		if (it.getProperty('cityname') == city):			
 			AddItem(it.getLabel(), url={'mode':'play','pos':j}, isFolder=False)
 	xbmcplugin.endOfDirectory(plugin_handle)	
 
 def play(params):
 	u  = playList.__getitem__(int(params['pos'])).getfilename()
-	it = playList.__getitem__(int(params['pos']))	
+	it = playList.__getitem__(int(params['pos']))
 	xbmc.Player().play(u, it)
 
 #---------------------------
+def get_params():
+	param=[]
+	paramstring=sys.argv[2]
+	if len(paramstring)>=2:
+		params=sys.argv[2]
+		cleanedparams=params.replace('?','')
+		if (params[len(params)-1]=='/'):
+			params=params[0:len(params)-2]
+		pairsofparams=cleanedparams.split('&')
+		param={}
+		for i in range(len(pairsofparams)):
+			splitparams={}
+			splitparams=pairsofparams[i].split('=')
+			if (len(splitparams))==2:
+				param[splitparams[0]]=splitparams[1]   
+	return param
+
 playList = xbmc.PlayList(xbmc.PLAYLIST_VIDEO)
 params = get_params()
 try:
