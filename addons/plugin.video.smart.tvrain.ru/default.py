@@ -13,7 +13,6 @@ if (sys.platform == 'win32') or (sys.platform == 'win64'):
 	_addon_patch     = _addon_patch.decode('utf-8')
 
 plugin_handle	= int(sys.argv[1])
-
 xbmcplugin.setContent(plugin_handle, 'movies')
 
 Headers ={'Accept'                      :'application/tvrain.api.2.8+json',
@@ -86,7 +85,6 @@ def AddItem(title, url={}, isFolder=True, img='', ico='', info={}, property={}):
 		for key in property:
 			item.setProperty(key, property[key])
 	xbmcplugin.addDirectoryItem(plugin_handle, uri, item, isFolder)
-
 	
 def start(params):
 	AddItem('Эфир',              {'mode':'live'})
@@ -100,8 +98,7 @@ def schedule(params):
 	try:
 		program_id= params['program_id']
 	except:
-		program_id = None
-	
+		program_id = None	
 	if not program_id:
 		url_ = 'https://api.tvrain.ru/api_v2/schedule/2014-09-11'
 		Data = Get_url(url_, Headers, JSON=True)
@@ -123,20 +120,17 @@ def schedule(params):
 	
 	xbmcplugin.endOfDirectory(plugin_handle)
 
-
 def live(params):
 	url_ = 'https://api.tvrain.ru/api_v2/live/'
 	Data = Get_url(url_, Headers, JSON=True)
 		
 	for i in Data['RTMP']:
 		AddItem(i['label'].encode('UTF-8'), url={'mode':'PlayRtmp', 'url':i['url']}, isFolder=False)
-	xbmcplugin.endOfDirectory(plugin_handle)
-		
+	xbmcplugin.endOfDirectory(plugin_handle)		
 		
 def ourchoice(params):
 	url_ = 'https://api.tvrain.ru/api_v2/widgets/ourchoice/'
-	Data = Get_url(url_, Headers, JSON=True)
-	
+	Data = Get_url(url_, Headers, JSON=True)	
 	for i in Data:	
 		info={'type':'Video', 'Title':'Наш Выбор', 'plot':i['name'].encode('UTF-8'), 'genre':'Наш Выбор', 'rating':5.7}
 		property={'fanart_image':i['preview_img']}
@@ -147,15 +141,13 @@ def popular(params):
 	try:
 		period=params['period']
 	except:
-		period = None
-	
+		period = None	
 	if period:
 		novideo = _addon.getSetting('novideo')
 		Headers_=Headers
 		Headers_['X-Result-Define-Period'] = '%s'%(period)
 		url_ = 'https://api.tvrain.ru/api_v2/widgets/popular/' 
 		Data = Get_url(url_, Headers, JSON=True)
-
 		for i in Data['elements']:
 			if i['program_id'] == 1018: #нет видио
 				if novideo == 'true': continue
@@ -181,8 +173,7 @@ def programscat(params):
 
 	AddItem('Популярные программы', {'mode':'programs', 'catid':'pop'})	
 	for i in Data['elements']:
-		AddItem(Data['elements'][i].encode('UTF-8'), {'mode':'programs', 'catid':i}, isFolder=True)
-			
+		AddItem(Data['elements'][i].encode('UTF-8'), {'mode':'programs', 'catid':i}, isFolder=True)			
 	xbmcplugin.endOfDirectory(plugin_handle)
 	
 def programs(params):	
@@ -190,60 +181,49 @@ def programs(params):
 	Headers_['X-Result-Define-Pagination']='1/250' #Почему 250	
 	url_ = 'https://api.tvrain.ru/api_v2/programs/'
 	Data = Get_url(url_, Headers_, JSON=True)
-
 	if params['catid']=='pop':
 		filter='is_cool'
 		filterzn='1'
 	else:
 		filter='category_id'
-		filterzn=params['catid']
-	
+		filterzn=params['catid']	
 	for i in Data['elements']:	
 		if str(i[filter])==filterzn:			
 			info={'type':'Video', 'Title': i['name'].encode('UTF-8'), 'plot':i['preview_text'],'genre':i['name'].encode('UTF-8')}
 			property={'fanart_image':i['preview_img']}
-			AddItem(i['name'].encode('UTF-8'), {'mode':'programid','id':i['id']}, img=i['preview_img'], info=info, property=property)
-		
+			AddItem(i['name'].encode('UTF-8'), {'mode':'programid','id':i['id']}, img=i['preview_img'], info=info, property=property)		
 	xbmcplugin.endOfDirectory(plugin_handle)
 	
 def programid(params):	
 	try:
 		page = params['page']
 	except:
-		page ='1'
-	
+		page ='1'	
 	Headers_=Headers
 	Headers_['X-Result-Define-Pagination'] = '%s/20'%(page)#номер страницы / элементов в странице]
 	url_ = 'https://api.tvrain.ru/api_v2/programs/%s/articles/'%(params['id'])
 	Data = Get_url(url_, Headers_, JSON=True)
-
 	current_page = Data['current_page']
 	total_pages  = Data['total_pages']
-
 	for i in Data['elements']:		
 		info= {'type':'Video', 'Title': i['name'].encode('UTF-8'), 'plot':i['name'].encode('UTF-8')}
 		property={'fanart_image':i['preview_img']}
-		AddItem(i['name'].encode('UTF-8'), {'mode':'play','id':i['id']}, isFolder=False, img=i['preview_img'], info=info, property=property)	
-	
+		AddItem(i['name'].encode('UTF-8'), {'mode':'play','id':i['id']}, isFolder=False, img=i['preview_img'], info=info, property=property)		
 	if current_page<total_pages:
 		title = 'Далее > %s из %s'%(str(current_page+1),str(total_pages))
-		AddItem(title, {'mode':'programid','id':params['id'],'page':current_page+1})
-	
+		AddItem(title, {'mode':'programid','id':params['id'],'page':current_page+1})	
 	xbmcplugin.endOfDirectory(plugin_handle)	
 			
 def play(params):	
 	url_ = 'https://api.tvrain.ru/api_v2/articles/%s/videos/' %(params['id'])
-	Data = Get_url(url_, Headers, JSON=True)
-	
+	Data = Get_url(url_, Headers, JSON=True)	
 	if not Data:return
 	dialog = xbmcgui.Dialog()
 	dialog_items = []
 	for i in Data[0]['mp4']:
 		dialog_items.append(i)		
-	dlg= dialog.select('Качество Изображения', dialog_items)
-		
-	Url_  = Data[0]['mp4'][dialog_items[dlg]]
-	
+	dlg= dialog.select('Качество Изображения', dialog_items)		
+	Url_  = Data[0]['mp4'][dialog_items[dlg]]	
 	playList = xbmc.PlayList(xbmc.PLAYLIST_VIDEO)
 	playList.clear()	
 	item = xbmcgui.ListItem('Дождь- '+Data[0]['name'].encode('UTF-8'), iconImage = '', thumbnailImage = '')				
@@ -251,20 +231,15 @@ def play(params):
 	xbmc.Player().play(playList)
 
 def PlayRtmp(params):	
-	Url = urllib.unquote_plus(params['url'])
-	
+	Url = urllib.unquote_plus(params['url'])	
 	playList = xbmc.PlayList(xbmc.PLAYLIST_MUSIC)
-	playList.clear()
-		
+	playList.clear()		
 	item = xbmcgui.ListItem('Live', iconImage = '', thumbnailImage = '')
-	#item.setInfo(type="Video", infoLabels={"Title":'Live'})
-	
+	item.setInfo(type="Video", infoLabels={"Title":'Live'})	
 	item.setProperty('uid', 'http://tvrain.ru/player/uppod/uppod.swf')
 	item.setProperty('file', Url)
-	item.setProperty('st', 'tvrain.ru/player/uppod/video174-1087.txt')
-	
-	item.setProperty('mimetype', 'video/flv')
-	
+	item.setProperty('st', 'tvrain.ru/player/uppod/video174-1087.txt')	
+	item.setProperty('mimetype', 'video/flv')	
 	playList.add(Url,item)
 	xbmc.Player().play(playList)
 
