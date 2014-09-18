@@ -36,8 +36,8 @@
 </addon>
 
 <addon id="plugin.video.onlinetv.ru"
-       name="onlinetv.ru  test"
-       version="0.0.2"
+       name="OnlineTV.ru  [Beta]"
+       version="0.0.3"
        provider-name="MazurokNN">
   <requires>
     <import addon="xbmc.python" version="2.1.0"/>
