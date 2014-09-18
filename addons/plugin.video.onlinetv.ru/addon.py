@@ -147,7 +147,6 @@ def Play(params):
 		rtmpPlayHQ  = ('mp4:' if redirect else '')+ rtmpPlay[1]
 	else:
 		rtmpPlayHQ =('mp4:' if redirect else '')+ rtmpPlay[0]  #None
-		
 	rtmpPlay    = ('mp4:' if redirect else '')+ rtmpPlay[0]
 	tcUrl       = re.compile('streamer:"(.+?)"').findall(str(scr.encode('UTF-8')))[0]
 	tcUrl       = 'rtmp://213.85.95.122:1935/archive' if redirect else tcUrl.split('::')[0]
@@ -161,12 +160,13 @@ def Play(params):
 		link = mobileVideo
 	else:
 		if dlg==0:
-			link=tcUrl+rtmpPlayHQ+' app='+app+' swfUrl='+swfUrl+' PlayPath='+rtmpPlay
+			link=tcUrl+rtmpPlayHQ+' app='+app+' swfUrl='+swfUrl+' PlayPath='+rtmpPlayHQ
 		else:
 			link=tcUrl+rtmpPlay+' app='+app+' swfUrl='+swfUrl+' PlayPath='+rtmpPlay
 			
 	item = xbmcgui.ListItem('', iconImage = '', thumbnailImage = '')
 	item.setInfo(type="Video", infoLabels={"Title":''})
 
-	item.setProperty('mimetype', 'video/flv')
+	#item.setProperty('mimetype', 'video/flv')
+	#item.setProperty('flashVer', 'WIN 15,0,0,152')
 	xbmc.Player().play(link, item) 
