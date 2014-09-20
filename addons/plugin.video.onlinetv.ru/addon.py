@@ -18,14 +18,46 @@ xbmcplugin.setContent(plugin_handle, 'movies')
 months = {'янв':'1', 'фев':'2', 'мар':'3', 'апр':'4', 'май':'5', 'мая':'5', 'июн':'6', 'июл':'7', 'авг':'8', 'сен':'9', 'окт':'10', 'ноя':'11', 'дек':'12'}
 
 #ARGB
-clGreen	= '[COLOR FF008000]%s[/COLOR]' 
+clGreen	     = '[COLOR FF008000]%s[/COLOR]' 
 clDodgerblue = '[COLOR FF1E90FF ]%s[/COLOR]'
+clDimgray 	 = '[COLOR FF696969 ]%s[/COLOR]'
 
 def start(params):
 	AddItem('В Эфире и Анонсы', url={'mode':'Live'})
 	AddItem('Новости Дня',      url={'mode':'News'}, isFolder=False)
 	AddItem('Проекты',          url={'mode':'Projects'})
 	AddItem('Весь Архив',       url={'mode':'GetArchive', 'page':1, 'dirupd':'0'})
+	AddItem('Поиск',            url={'mode':'Search'})
+	xbmcplugin.endOfDirectory(plugin_handle)
+
+def Search(params):
+	kb = xbmc.Keyboard('', 'Поиск')
+	kb.doModal()
+	if (not kb.isConfirmed()): return(1)
+	q = kb.getText()
+	
+	url ='http://www.onlinetv.ru/project/search/?q=%s'%(q)
+	Data  = Get_url(url)
+	if not Data: return(1)
+	soup = BeautifulSoup(Data)
+	soup = soup.find('div', id='search_result')
+	result = soup.findAll('div', 'item')
+	for res in result:
+		img  = res.find('img', src=True)['src']
+		a = res.find('a', 'name')
+		title = a.string.encode('UTF-8').replace('&quot;', '"')
+		href  = a['href']
+		#desc  = res.find('p').string
+		prg_name = res.find('h2').a.string.encode('UTF-8')
+		dt = res.find('span', 'date').string
+		dt_re = re.match('(\d\d?) (.{3}).*? (\d{4})', dt)
+		if dt_re:
+			mon = months[dt_re.group(2).encode('UTF-8')]		
+			day = dt_re.group(1) if len(dt_re.group(1))==2 else '0'+dt_re.group(1)
+			dt = day+'/'+mon+'/'+dt_re.group(3)
+		else:
+			dt = '-/-/-'		
+		AddItem('(%s) %s'%(dt.encode('UTF-8'), clDimgray%prg_name+' : '+title), url={'mode':'Play','title':title, 'url':href,'redirect':True}, ico= img)
 	xbmcplugin.endOfDirectory(plugin_handle)
 	
 def Live(params):
