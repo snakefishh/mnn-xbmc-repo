@@ -43,7 +43,7 @@ def Live(params):
 		try:
 			pub_date = datetime.datetime.strptime(i['pub_date'], '%Y-%m-%dT%H:%M:%SZ')	
 		except TypeError:
-			start_date = datetime.datetime.fromtimestamp(time.mktime(time.strptime(i['pub_date'], '%Y-%m-%dT%H:%M:%SZ')))
+			pub_date = datetime.datetime.fromtimestamp(time.mktime(time.strptime(i['pub_date'], '%Y-%m-%dT%H:%M:%SZ')))
 
 		zn= 1 if time.timezone>=0 else -1
 		td= datetime.timedelta(hours=abs(time.timezone/(60*60)))
