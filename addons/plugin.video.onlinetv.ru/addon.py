@@ -24,7 +24,7 @@ clDimgray 	 = '[COLOR FF696969 ]%s[/COLOR]'
 
 def start(params):
 	AddItem('В Эфире и Анонсы', url={'mode':'Live'})
-	AddItem('Новости Дня',      url={'mode':'News'}, isFolder=False)
+	AddItem('Новости Дня',      url={'mode':'News'})
 	AddItem('Проекты',          url={'mode':'Projects'})
 	AddItem('Весь Архив',       url={'mode':'GetArchive', 'page':1, 'dirupd':'0'})
 	AddItem('Поиск',            url={'mode':'Search'})
@@ -56,8 +56,13 @@ def Search(params):
 			day = dt_re.group(1) if len(dt_re.group(1))==2 else '0'+dt_re.group(1)
 			dt = day+'/'+mon+'/'+dt_re.group(3)
 		else:
-			dt = '-/-/-'		
-		AddItem('(%s) %s'%(dt.encode('UTF-8'), clDimgray%prg_name+' : '+title), url={'mode':'Play','title':title, 'url':href,'redirect':True}, ico= img)
+			dt = '-/-/-'	
+
+		tcUrl = 'rtmp://213.85.95.122:1935/archive'
+		app   = 'archive'
+		pr    = 'mp4:'		
+		url_ = {'mode':'PlayDlg','title':title, 'url':href,'redirect':'true','tcUrl':tcUrl, 'app':app, 'pr':pr}			
+		AddItem('(%s) %s'%(dt.encode('UTF-8'), clDimgray%prg_name+' : '+title), url=url_, ico= img)
 	xbmcplugin.endOfDirectory(plugin_handle)
 	
 def Live(params):
@@ -70,8 +75,7 @@ def Live(params):
 	js = json.loads(js_str)
 	UTC_MCS=re.compile('UTC_MCS ?= ?(\d{16})').findall(Data)[0]
 	now = datetime.datetime.utcfromtimestamp(((int(UTC_MCS)//1000)+14400000)//1000)
-	for i in js['data']:
-				
+	for i in js['data']:				
 		try:
 			pub_date = datetime.datetime.strptime(i['pub_date'], '%Y-%m-%dT%H:%M:%SZ')	
 		except TypeError:
@@ -83,8 +87,12 @@ def Live(params):
 		dt_str= dt.strftime('%d/%m %H:%M')
 		
 		img = 'http://media.onlinetv.ru/resize/160/90/'+i['root_img']
-		if pub_date < now:
-			AddItem(clGreen('В Эфире')+' (%s) '%(dt_str)+i['header'].encode('UTF-8'), url={'mode':'LivePlay','title':i['header'].encode('UTF-8'), 'id':i['id']})
+		if pub_date < now:	
+			tcUrl = 'rtmp://213.85.95.122:1935/event'
+			app   = 'event'	
+			pr    = ''		
+			url_ = {'mode':'Play','title':i['header'].encode('UTF-8'), 'id':i['id'],'redirect':'true', 'tcUrl':tcUrl, 'app':app, 'pr':pr}		
+			AddItem(clGreen('В Эфире')+' (%s) '%(dt_str)+i['header'].encode('UTF-8'), url=url_)
 		else:
 			AddItem(clDodgerblue%('Анонс')+ ' (%s)   '%(dt_str)+i['header'].encode('UTF-8'), url={'mode':''},ico= img, isFolder =False)
 	xbmcplugin.endOfDirectory(plugin_handle)
@@ -95,7 +103,7 @@ def News(params):
 	soup = BeautifulSoup(Data)
 	url=soup('a', id="menu_news")[0]['href']
 	if not url: return(1)
-	Play({'url':url, 'title':'Новости Дня', 'redirect':False})
+	PlayDlg({'url':urllib.quote(url), 'title':'Новости Дня', 'redirect':'false'})
 	
 def Projects(params):
 	Data  = Get_url('http://www.onlinetv.ru/')
@@ -157,7 +165,11 @@ def GetArchive(params):
 		else:
 			dt = '-/-/-'
 		
-		AddItem('(%s)  %s'%(dt.encode('UTF-8'), title), url={'mode':'Play','title':title, 'url':href,'redirect':True}, ico= img)
+		tcUrl = 'rtmp://213.85.95.122:1935/archive'
+		app   = 'archive'
+		pr    = 'mp4:'		
+		url_ = {'mode':'PlayDlg','title':title, 'url':href,'redirect':'true','tcUrl':tcUrl, 'app':app, 'pr':pr}
+		AddItem('(%s)  %s'%(dt.encode('UTF-8'), title), url= url_, ico= img)
 	if page < tPage:
 		if project_id:
 			itemUrl= {'mode':'GetArchive', 'project_id':params['project_id'], 'page':str(page+1), 'dirupd':'1'}
@@ -167,10 +179,36 @@ def GetArchive(params):
 		AddItem(ctitle, url=itemUrl)
 	xbmcplugin.endOfDirectory(plugin_handle, updateListing= updateListing)
 		
+def PlayDlg(params):
+	def AddI(title, uri):
+		item = xbmcgui.ListItem(title)
+		xbmcplugin.addDirectoryItem(plugin_handle, uri, item, isFolder=False)		
+	uri = sys.argv[0]+'?'
+	for i in params:
+		uri+= i+'='+params[i]+'&'
+	uri += 'mode=Play&'	
+	uri_= uri+'qual=1'
+	AddI('Высокое качество', uri_)
+	uri_= uri+'qual=2'
+	AddI('Среднее качество', uri_)
+	uri_= uri+'qual=3'
+	AddI('Поток для мобильных', uri_)	
+	xbmcplugin.endOfDirectory(plugin_handle)
+
+			
 def Play(params):
 	redirect = params['redirect']
 	url ='http://www.onlinetv.ru'+urllib.unquote(params['url'])
 	title = urllib.unquote(params['title'])
+	try:
+		tcUrl_ = urllib.unquote(params['tcUrl'])
+		pr_ = urllib.unquote(params['pr'])
+		app_ = urllib.unquote(params['app'])
+	except:
+		tcUrl_ = ''
+		pr_ = ''
+		app_ = ''
+	
 	Data  = Get_url(url)
 	if not Data: return(1)
 	
@@ -178,30 +216,29 @@ def Play(params):
 	scr =soup.find(text=re.compile('swfobject.embedSWF'))
 	scr= scr.replace(' ','').replace('\n','').replace('\r','')
 
-	swfUrl      = re.compile('swfobject.embedSWF\("(.+?)"').findall(str(scr.encode('UTF-8')))[0]
-	rtmpPlay    = re.compile('file:"(.+?)"').findall(str(scr.encode('UTF-8')))
-	rtmpPlay    = rtmpPlay[0].split(',')
-	if len(rtmpPlay)==2:
-		rtmpPlayHQ  = ('mp4:' if redirect else '')+ rtmpPlay[1]
+	swfUrl  = re.compile('swfobject.embedSWF\("(.+?)"').findall(str(scr.encode('UTF-8')))[0]
+	rtmp    = re.compile('file:"(.+?)"').findall(str(scr.encode('UTF-8')))
+	rtmp    = rtmp[0].split(',')
+	rtmpPr =  (pr_ if redirect=='true' else '')
+	if len(rtmp)==2:
+		rtmpPlayHQ  = rtmpPr + rtmp[1]
 	else:
-		rtmpPlayHQ =('mp4:' if redirect else '')+ rtmpPlay[0]  #None
-	rtmpPlay    = ('mp4:' if redirect else '')+ rtmpPlay[0]
+		rtmpPlayHQ =rtmpPr + rtmp[0]  #None
+	
+	rtmpPlay    = rtmpPr + rtmp[0]
 	tcUrl       = re.compile('streamer:"(.+?)"').findall(str(scr.encode('UTF-8')))[0]
-	tcUrl       = 'rtmp://213.85.95.122:1935/archive' if redirect else tcUrl.split('::')[0]
-	app         = 'archive' if redirect else urlparse(tcUrl).path[1::]
+	tcUrl       = tcUrl_ if redirect=='true' else tcUrl.split('::')[0]
+	app         = app_ if redirect=='true' else urlparse(tcUrl).path[1::]
 		
 	mobileVideo = re.compile('sourcesrc="(.+?)"').findall(str(scr.encode('UTF-8')))[0]
 
-	dialog = xbmcgui.Dialog()
-	dlg= dialog.select('Выбор потока:', ['Высокое качество', 'Среднее качество', 'Поток для мобильных'])
-	if dlg==-1:return
-	if dlg==2:
-		link = mobileVideo
+	xbmc.executebuiltin('Action(Back)')
+	if params['qual']=='1':
+		link=tcUrl+' app='+app+' swfUrl='+swfUrl+' PlayPath='+rtmpPlayHQ		
+	elif params['qual']=='2':
+		link=tcUrl+' app='+app+' swfUrl='+swfUrl+' PlayPath='+rtmpPlay
 	else:
-		if dlg==0:
-			link=tcUrl+' app='+app+' swfUrl='+swfUrl+' PlayPath='+rtmpPlayHQ
-		else:
-			link=tcUrl+' app='+app+' swfUrl='+swfUrl+' PlayPath='+rtmpPlay
+		link = mobileVideo
 			
 	item = xbmcgui.ListItem(title, iconImage = '', thumbnailImage = '')
 	item.setInfo(type="Video", infoLabels={"Title":title})
@@ -210,50 +247,4 @@ def Play(params):
 	#item.addStreamInfo("video", {"codec": "h264", "width": 960, "height": 540})
 	#item.addStreamInfo('audio', {'codec': 'no-audio'})
 	
-	print link
-	xbmc.Player().play(link, item)
-
-def LivePlay(params):
-	url ='http://www.onlinetv.ru/video/%s/'%(params['id'])
-	title = urllib.unquote(params['title'])
-	Data  = Get_url(url)
-	if not Data: return(1)
-	soup = BeautifulSoup(Data)	
-	scr =soup.find(text=re.compile('swfobject.embedSWF'))
-	scr= scr.replace(' ','').replace('\n','').replace('\r','')
-
-	swfUrl      = re.compile('swfobject.embedSWF\("(.+?)"').findall(str(scr.encode('UTF-8')))[0]
-	rtmpPlay    = re.compile('file:"(.+?)"').findall(str(scr.encode('UTF-8')))
-	rtmpPlay    = rtmpPlay[0].split(',')
-	
-	if len(rtmpPlay)==2:
-		rtmpPlayHQ  = rtmpPlay[1]
-	else:
-		rtmpPlayHQ =rtmpPlay[0]  #None
-	
-	rtmpPlay    = rtmpPlay[0]
-	tcUrl       = 'rtmp://213.85.95.122:1935/event'
-	app         = 'event'
-		
-	mobileVideo = re.compile('sourcesrc="(.+?)"').findall(str(scr.encode('UTF-8')))[0]
-
-	dialog = xbmcgui.Dialog()
-	dlg= dialog.select('Выбор потока:', ['Высокое качество', 'Среднее качество', 'Поток для мобильных'])
-	if dlg==-1:return
-	if dlg==2:
-		link = mobileVideo
-	else:
-		if dlg==0:
-			link=tcUrl+' app='+app+' swfUrl='+swfUrl+' PlayPath='+rtmpPlayHQ
-		else:
-			link=tcUrl+' app='+app+' swfUrl='+swfUrl+' PlayPath='+rtmpPlay
-			
-	item = xbmcgui.ListItem('title', iconImage = '', thumbnailImage = '')
-	item.setInfo(type="Video", infoLabels={"Title":'title'})
-	
-	#item.setProperty('mimetype', 'video/flv')
-	#item.addStreamInfo("video", {"codec": "h264", "width": 960, "height": 540})
-	#item.addStreamInfo('audio', {'codec': 'no-audio'})
-	
-	print link
 	xbmc.Player().play(link, item)
