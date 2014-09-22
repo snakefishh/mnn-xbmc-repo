@@ -1,11 +1,13 @@
 CREATE TABLE projects (
   id                 integer PRIMARY KEY AUTOINCREMENT NOT NULL,
   project_id         integer NOT NULL,
-  title              nvarchar(32),
+  title              nvarchar(50),
   category_id        integer NOT NULL,
   channel_ids        integer,
   overall_count      integer,
-  tracks_lastupdate  datetime
+  thumbnail          nvarchar(255),
+  md5                nvarchar(50),
+  isupdate           integer DEFAULT 1
 );
 --
 CREATE TABLE seasons (
@@ -13,7 +15,7 @@ CREATE TABLE seasons (
    project_id          integer NOT NULL,
    season              integer,
    pos                 integer,
-   title               nvarchar(32) 
+   title               nvarchar(50) 
 )
 --
 CREATE TABLE tracks (
@@ -22,6 +24,7 @@ CREATE TABLE tracks (
   season              integer,
   episode_of_season   integer,
   title               nvarchar(255),
+  thumbnail           nvarchar(255),
   tvurl               nvarchar(255)
 );
 --

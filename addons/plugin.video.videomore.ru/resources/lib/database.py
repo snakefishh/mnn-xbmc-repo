@@ -7,13 +7,12 @@ from datetime import datetime, timedelta
 from time import time
 import sys, os, re, time, json
 import sqlite3 as db
+import hashlib
 addon_name = 'plugin.video.videomore.ru'
 
-update_pr_time     = 12
-update_tracks_time = 6
+update_pr_time     = 24
 
-def construct_get(action, keys={}, app_id='VM4AndrPho', id='undef'):
-	import hashlib
+def construct_get(action, keys={}, app_id='VM4AndrPho', id='undef'):	
 	#com.ctcmediagroup.videomore.apk\smali\com\ctcmediagroup\videomore\utils\DeviceManager.smali   CERTSE_YKE_NOHEP	
 	api_sig = '1d5107871b12acabb235ef45f49ee967'
 	
@@ -31,17 +30,9 @@ def construct_get(action, keys={}, app_id='VM4AndrPho', id='undef'):
 	url_get += '&sig='+md5.hexdigest()
 	return 	url+url_get
 
-def Get_url(url, headers={}, Post = None, GETparams={}, JSON=False):
-	
-	if GETparams:
-		url = "%s?%s" % (url, urllib.urlencode(GETparams))
-	if Post:
-		Post = urllib.urlencode(Post)		
-	req = urllib2.Request(url, Post)
+def Get_url(url, JSON=False):
+	req = urllib2.Request(url)
 	#req.add_header("User-Agent", User_Agent)
-	
-	for key, val in headers.items():
-		req.add_header(key, val)
 	try:
 		response = urllib2.urlopen(req)
 	except (urllib2.HTTPError, urllib2.URLError), e:
@@ -107,6 +98,15 @@ class Database:
 				return False
 		return True
 		
+	def Clear(self):
+		self.Connect()	
+		self.cursor.execute('DELETE FROM projects')
+		self.cursor.execute('DELETE FROM seasons')
+		self.cursor.execute('DELETE FROM tracks')
+		self.cursor.execute('UPDATE settings SET lastupdate = "" WHERE id = 1;')
+		self.connection.commit()
+		self.Disconnect()
+	
 	def Connect(self):
 		self.connection = db.connect(database=self.db_name)
 		try:
@@ -121,7 +121,7 @@ class Database:
 		self.Connect()	
 		self.cursor.execute('SELECT lastupdate FROM settings WHERE id = 1')
 		lu = self.cursor.fetchone()
-		if lu[0] == None:
+		if (lu[0] == None) or (lu[0] ==''):
 			self.Disconnect()
 			return None
 		else:
@@ -132,23 +132,36 @@ class Database:
 		
 	def UpdateProjects(self):
 		self.Connect()
+		self.cursor.execute('SELECT md5 FROM projects')
+		md5_db = self.cursor.fetchall()
+		md5_db_sp = []
+		for i in md5_db:
+			md5_db_sp.append(i[0])
+		
 		self.cursor.execute('DELETE FROM projects')
 		self.cursor.execute('DELETE FROM seasons')
+		
 		for c_id in range(0, 4):
 			uri = construct_get('projects', {'category_id':str(c_id)})
 			Data = Get_url(uri,JSON=True)
+			if not Data:return(1)
+			
 			for i in Data:
+				md5 = hashlib.md5()
+				md5.update(str(i))					
+				isupd = '0'
+				if not (md5.hexdigest()) in md5_db_sp: isupd = '1'
 				
-				if i['channel_ids'][0] == 'no_channel':
-					c_ids = '0'
+				if i['channel_ids'][0] == 'no_channel': #Вроде СТС
+					c_ids = '1'
 				else:
 					c_ids = i['channel_ids'][0]
-				self.cursor.execute('INSERT INTO projects (project_id, title, category_id, channel_ids, overall_count) VALUES ("%s", "%s", "%s", "%s", "%s");' % (i['id'], i['title'], i['category_id'], c_ids, i['overall_count']))			
+				self.cursor.execute('INSERT INTO projects (project_id, title, category_id, channel_ids, overall_count, md5, isupdate, thumbnail) VALUES ("%s", "%s", "%s", "%s", "%s", "%s", "%s", "%s");' % (i['id'], i['title'], i['category_id'], c_ids, i['overall_count'], md5.hexdigest(), isupd, i['big_thumbnail']))			
 		
 				if i['category_id'] != '0':
 					for j in i['project_seasons']:				
 						self.cursor.execute('INSERT INTO seasons (project_id, season, pos, title) VALUES ("%s", "%s", "%s", "%s");' %(i['id'], j, i['project_seasons'][j]['pos'], i['project_seasons'][j]['title']))
-			
+				del(md5)
 		self.cursor.execute('UPDATE settings SET lastupdate = "%s"' % datetime.now())
 		self.connection.commit()
 		self.Disconnect()
@@ -156,10 +169,9 @@ class Database:
 	def GetByCategory(self, cat_id):
 		lastupdate = self.GetProjectsLastUpdate()
 		if  (not lastupdate) or ((datetime.now()- timedelta(hours = update_pr_time)) > lastupdate):
-			self.UpdateProjects()
-		
+			self.UpdateProjects()		
 		self.Connect()
-		self.cursor.execute('SELECT project_id, title FROM projects WHERE category_id =%s'%(cat_id))
+		self.cursor.execute('SELECT project_id, title, thumbnail FROM projects WHERE category_id =%s'%(cat_id))
 		cat = self.cursor.fetchall()
 		self.Disconnect()
 		return cat
@@ -167,31 +179,12 @@ class Database:
 	def GetByChannel(self, ch_id):
 		lastupdate = self.GetProjectsLastUpdate()
 		if  (not lastupdate) or ((datetime.now()- timedelta(hours = update_pr_time)) > lastupdate):
-			self.UpdateProjects()
-		
+			self.UpdateProjects()			
 		self.Connect()
-		self.cursor.execute('SELECT  project_id, title FROM projects WHERE channel_ids =%s' %(ch_id))
+		self.cursor.execute('SELECT  project_id, title, thumbnail FROM projects WHERE channel_ids =%s' %(ch_id))
 		ch = self.cursor.fetchall()
 		self.Disconnect()
 		return ch
-		
-#	def GetAllTracks(self, id):		
-#		self.Connect()
-#		self.cursor.execute('SELECT tracks_lastupdate FROM projects WHERE project_id =%s' %(id))
-#		tlu = self.cursor.fetchone()
-#
-#		if tlu[0] == None:
-#			self.UpdateTracks(id)
-#		else:
-#			#dt = datetime.strptime(tlu[0], '%Y-%m-%d %H:%M:%S.%f')
-#			dt = datetime.fromtimestamp(time.mktime(time.strptime(tlu[0], '%Y-%m-%d %H:%M:%S.%f')))
-#			if (datetime.now()- timedelta(hours = update_tracks_time)) > dt:
-#				self.UpdateTracks(id)
-#		
-#		self.cursor.execute('SELECT  project_id, season_pos, episode_of_season, tvurl FROM tracks WHERE project_id=%s' %(id))
-#		tr = self.cursor.fetchall()
-#		self.Disconnect()
-#		return tr
 	
 	def GetSeasons(self, id):
 		self.Connect()
@@ -203,34 +196,26 @@ class Database:
 	def UpdateTracks(self, id):
 		self.cursor.execute('DELETE FROM tracks WHERE project_id=%s' %(id))
 		self.cursor.execute('SELECT overall_count FROM projects WHERE project_id =%s' %(id))
-		oc = self.cursor.fetchone()
-		
+		oc = self.cursor.fetchone()		
 		page10 = int(oc[0]/10)+1
 		for j in range(page10):
 			uri = construct_get('tracks', {'project_id':str(id),'per_page':'10', 'page':str(j+1) })
 			Data = Get_url(uri,JSON=True)
-
+			if not Data:return(1)
+			print Data
 			for i in Data:
-				self.cursor.execute('INSERT INTO tracks (project_id, season, episode_of_season, title, tvurl) VALUES ("%s", "%s", "%s", "%s", "%s");'%(id, i['season_id'], i['episode_of_season'], i['title'].replace('"','\''), i['tv']))
-			
-			self.cursor.execute('UPDATE projects SET tracks_lastupdate="%s" WHERE project_id="%s"'% (datetime.now(), id))
-		
+				self.cursor.execute('INSERT INTO tracks (project_id, season, episode_of_season, title, tvurl, thumbnail) VALUES ("%s", "%s", "%s", "%s", "%s", "%s");'%(id, i['season_id'], i['episode_of_season'], i['title'].replace('"','\''), i['tv'], i['big_thumbnail_url']))			
+			self.cursor.execute('UPDATE projects SET isupdate=0 WHERE project_id="%s"'% (id))
 		self.connection.commit()
 
 	
 	def GetTracksOfSeason(self, id, Seas):
 		self.Connect()
-		self.cursor.execute('SELECT tracks_lastupdate FROM projects WHERE project_id =%s' %(id))
+		self.cursor.execute('SELECT isupdate FROM projects WHERE project_id =%s' %(id))
 		tlu = self.cursor.fetchone()
-		if tlu[0] == None:
-			self.UpdateTracks(id)
-		else:
-			#dt = datetime.strptime(tlu[0], '%Y-%m-%d %H:%M:%S.%f')
-			dt = datetime.fromtimestamp(time.mktime(time.strptime(tlu[0], '%Y-%m-%d %H:%M:%S.%f')))
-			if (datetime.now()- timedelta(hours = update_tracks_time)) > dt:
-				self.UpdateTracks(id)
-		
-		self.cursor.execute('SELECT title, tvurl FROM tracks WHERE project_id=%s AND season=%s' %(id, Seas))
+		if tlu[0] == 1:
+			self.UpdateTracks(id)				
+		self.cursor.execute('SELECT title, tvurl, thumbnail FROM tracks WHERE project_id=%s AND season=%s' %(id, Seas))
 		tr = self.cursor.fetchall()
 		self.Disconnect()
 		return tr
@@ -239,7 +224,7 @@ class Database:
 		self.Connect()
 		uri = construct_get('suggestions', {'q':val})
 		Data = Get_url(uri,JSON=True)
+		if not Data:return(1)
 		self.Disconnect()
 		return Data
-		
-		
+				
