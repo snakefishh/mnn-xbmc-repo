@@ -47,7 +47,11 @@ def start(params):
 		uri = '%s?%s' % (sys.argv[0], urllib.urlencode({'mode': mode, 'moder': moder}))
 		item = xbmcgui.ListItem(title, iconImage=img, thumbnailImage=img)
 		xbmcplugin.addDirectoryItem(plugin_handle, uri, item, True)
-
+	
+	if os.path.exists(_addon_patch+'/resources/newver'):
+		db = Database(db_name)
+		db.Remove()
+		os.remove(_addon_patch+'/resources/newver')
 	try:
 		mod = params['moder']
 	except:
