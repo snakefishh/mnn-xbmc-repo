@@ -211,7 +211,6 @@ def Play(params):
 	
 	soup = BeautifulSoup(Data)	
 	scr =soup.find(text=re.compile('swfobject.embedSWF'))
-	print scr
 	if not scr: return None
 	scr= scr.replace(' ','').replace('\n','').replace('\r','')
 
