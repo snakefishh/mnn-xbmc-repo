@@ -8,11 +8,7 @@ from BeautifulSoup import BeautifulSoup
 from urlparse import urlparse
 addon_name 	= 'plugin.video.onlinetv.ru'
 addon 		= xbmcaddon.Addon(id = addon_name)
-
 plugin_handle	= int(sys.argv[1])
-#addon_patch 	= xbmc.translatePath(addon.getAddonInfo('path'))
-#if sys.platform == 'win32': addon_patch = addon_patch.decode('utf-8')
-
 xbmcplugin.setContent(plugin_handle, 'movies')
  	
 months = {'янв':'1', 'фев':'2', 'мар':'3', 'апр':'4', 'май':'5', 'мая':'5', 'июн':'6', 'июл':'7', 'авг':'8', 'сен':'9', 'окт':'10', 'ноя':'11', 'дек':'12'}
@@ -200,7 +196,6 @@ def Play(params):
 	redirect = params['redirect']
 		
 	url ='http://www.onlinetv.ru'+urllib.unquote(params['url'])
-	print params
 	title = urllib.unquote(params['title'])
 	try:
 		tcUrl_ = urllib.unquote(params['tcUrl'])
@@ -216,6 +211,8 @@ def Play(params):
 	
 	soup = BeautifulSoup(Data)	
 	scr =soup.find(text=re.compile('swfobject.embedSWF'))
+	print scr
+	if not scr: return None
 	scr= scr.replace(' ','').replace('\n','').replace('\r','')
 
 	swfUrl  = re.compile('swfobject.embedSWF\("(.+?)"').findall(str(scr.encode('UTF-8')))[0]

@@ -144,7 +144,7 @@ class Database:
 		for c_id in range(0, 4):
 			uri = construct_get('projects', {'category_id':str(c_id)})
 			Data = Get_url(uri,JSON=True)
-			if not Data:return(1)
+			if not Data:return None
 			
 			for i in Data:
 				md5 = hashlib.md5()
@@ -169,7 +169,7 @@ class Database:
 	def GetByCategory(self, cat_id):
 		lastupdate = self.GetProjectsLastUpdate()
 		if  (not lastupdate) or ((datetime.now()- timedelta(hours = update_pr_time)) > lastupdate):
-			self.UpdateProjects()		
+			self.UpdateProjects()
 		self.Connect()
 		self.cursor.execute('SELECT project_id, title, thumbnail FROM projects WHERE category_id =%s'%(cat_id))
 		cat = self.cursor.fetchall()
@@ -181,7 +181,7 @@ class Database:
 		if  (not lastupdate) or ((datetime.now()- timedelta(hours = update_pr_time)) > lastupdate):
 			self.UpdateProjects()			
 		self.Connect()
-		self.cursor.execute('SELECT  project_id, title, thumbnail FROM projects WHERE channel_ids =%s' %(ch_id))
+		self.cursor.execute('SELECT  project_id, title, thumbnail FROM projects WHERE channel_ids =%s  AND category_id <> 0' %(ch_id))
 		ch = self.cursor.fetchall()
 		self.Disconnect()
 		return ch
@@ -197,12 +197,15 @@ class Database:
 		self.cursor.execute('DELETE FROM tracks WHERE project_id=%s' %(id))
 		self.cursor.execute('SELECT overall_count FROM projects WHERE project_id =%s' %(id))
 		oc = self.cursor.fetchone()		
-		page10 = int(oc[0]/10)+1
-		for j in range(page10):
-			uri = construct_get('tracks', {'project_id':str(id),'per_page':'10', 'page':str(j+1) })
+
+		page10 = oc[0]//10.
+		if page10 != oc[0]/10.:
+			page10+=1
+
+		for j in range(int(page10)):
+			uri = construct_get('tracks', {'project_id':str(id),'per_page':'10', 'page':str(j+1) })			
 			Data = Get_url(uri,JSON=True)
-			if not Data:return(1)
-			print Data
+			if not Data:return None
 			for i in Data:
 				self.cursor.execute('INSERT INTO tracks (project_id, season, episode_of_season, title, tvurl, thumbnail) VALUES ("%s", "%s", "%s", "%s", "%s", "%s");'%(id, i['season_id'], i['episode_of_season'], i['title'].replace('"','\''), i['tv'], i['big_thumbnail_url']))			
 			self.cursor.execute('UPDATE projects SET isupdate=0 WHERE project_id="%s"'% (id))
@@ -215,7 +218,7 @@ class Database:
 		tlu = self.cursor.fetchone()
 		if tlu[0] == 1:
 			self.UpdateTracks(id)				
-		self.cursor.execute('SELECT title, tvurl, thumbnail FROM tracks WHERE project_id=%s AND season=%s' %(id, Seas))
+		self.cursor.execute('SELECT title, tvurl, thumbnail FROM tracks WHERE project_id=%s AND season=%s ORDER BY episode_of_season' %(id, Seas))
 		tr = self.cursor.fetchall()
 		self.Disconnect()
 		return tr
@@ -224,7 +227,7 @@ class Database:
 		self.Connect()
 		uri = construct_get('suggestions', {'q':val})
 		Data = Get_url(uri,JSON=True)
-		if not Data:return(1)
+		if not Data:return None
 		self.Disconnect()
 		return Data
 				

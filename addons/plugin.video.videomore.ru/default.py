@@ -43,9 +43,10 @@ def get_params():
 
 
 def start(params):
-	def add_dir(title, mode, moder, img=''):
+	def add_dir(title, mode, moder, img='', fi=''):
 		uri = '%s?%s' % (sys.argv[0], urllib.urlencode({'mode': mode, 'moder': moder}))
 		item = xbmcgui.ListItem(title, iconImage=img, thumbnailImage=img)
+		if fi:item.setProperty('fanart_image', fi)
 		xbmcplugin.addDirectoryItem(plugin_handle, uri, item, True)
 	
 	if os.path.exists(_addon_patch+'/resources/newver'):
@@ -65,12 +66,12 @@ def start(params):
 			add_dir('Шоу', 'get_cat', '1')
 			add_dir('Программы', 'get_cat', '3')
 		elif mod == '2':
-			add_dir('СТС', 'get_ch', '1')
-			add_dir('Домашний', 'get_ch', '2')
-			add_dir('Перец', 'get_ch', '5')
-		#    add_dir('-----', 'get_ch', '0')
-		#add_dir('РЕН-ТВ', 'get_ch', '3')
-		#add_dir('5 Канал', 'get_ch', '4')
+			add_dir('СТС', 'get_ch', '1', img=_addon_patch+'/resources/media/ctc_icon.png', fi=_addon_patch+'/resources/media/ctc_fan.jpg')
+			add_dir('Домашний', 'get_ch', '2', img=_addon_patch+'/resources/media/per_icon.png', fi=_addon_patch+'/resources/media/per_fan.jpg')
+			add_dir('Перец', 'get_ch', '5', img=_addon_patch+'/resources/media/dom_icon.png', fi=_addon_patch+'/resources/media/dom_fan.jpg')
+			#add_dir('-----', 'get_ch', '0')
+			#add_dir('РЕН-ТВ', 'get_ch', '3')
+			#add_dir('5 Канал', 'get_ch', '4')
 	xbmcplugin.endOfDirectory(plugin_handle)
 
 
@@ -85,9 +86,7 @@ def get_cat(params):
 		item = xbmcgui.ListItem(i[1], iconImage=img, thumbnailImage=img)
 		item.setProperty('fanart_image', img)
 		xbmcplugin.addDirectoryItem(plugin_handle, uri, item, True)
-
 	xbmcplugin.endOfDirectory(plugin_handle)
-
 
 def get_ch(params):
 	db = Database(db_name)
@@ -100,9 +99,7 @@ def get_ch(params):
 		item = xbmcgui.ListItem(i[1], iconImage=img, thumbnailImage=img)
 		item.setProperty('fanart_image', img)
 		xbmcplugin.addDirectoryItem(plugin_handle, uri, item, True)
-
 	xbmcplugin.endOfDirectory(plugin_handle)
-
 
 def season(params):
 	db = Database(db_name)
@@ -112,23 +109,18 @@ def season(params):
 		uri = '%s?%s' % (sys.argv[0], urllib.urlencode({'mode': 'tracks', 'id': params['id'], 'seas': i[0]}))
 		item = xbmcgui.ListItem(i[2].encode('UTF-8'), iconImage='', thumbnailImage='')
 		xbmcplugin.addDirectoryItem(plugin_handle, uri, item, True)
-
 	xbmcplugin.endOfDirectory(plugin_handle)
-
 
 def tracks(params):
 	db = Database(db_name)
 	tracks = db.GetTracksOfSeason(params['id'], params['seas'])
-
 	for i in tracks:
 		uri = '%s?%s' % (sys.argv[0], urllib.urlencode({'mode': 'play', 'title': i[0].encode('UTF-8'), 'url': i[1]}))
 		img = i[2]
 		item = xbmcgui.ListItem(i[0].encode('UTF-8'), iconImage=img, thumbnailImage=img)
 		item.setProperty('fanart_image', img)
 		xbmcplugin.addDirectoryItem(plugin_handle, uri, item, True)
-
 	xbmcplugin.endOfDirectory(plugin_handle)
-
 
 def play(params):
 	uri = urllib.unquote_plus(params['url'])
@@ -139,18 +131,19 @@ def play(params):
 	playList.add(uri, item)
 	xbmc.Player().play(playList)
 
-
 def search(params):
 	kb = xbmc.Keyboard('', 'Поиск', False)
 	kb.doModal()
 	if not kb.isConfirmed(): return
 	val = kb.getText()
 	db = Database(db_name)
+	db.GetByCategory(params['moder'])
 	res = db.search(val)
-	for i in res:
-		uri = '%s?%s' % (sys.argv[0], urllib.urlencode({'mode': 'season', 'id': i[0]}))
-		item = xbmcgui.ListItem(i[1].encode('UTF-8'), iconImage='', thumbnailImage='')
-		xbmcplugin.addDirectoryItem(plugin_handle, uri, item, True)
+	if res:
+		for i in res:
+			uri = '%s?%s' % (sys.argv[0], urllib.urlencode({'mode': 'season', 'id': i[0]}))
+			item = xbmcgui.ListItem(i[1].encode('UTF-8'), iconImage='', thumbnailImage='')
+			xbmcplugin.addDirectoryItem(plugin_handle, uri, item, True)
 	xbmcplugin.endOfDirectory(plugin_handle)
 
 def clear_db():

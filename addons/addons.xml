@@ -36,8 +36,8 @@
 </addon>
 
 <addon id="plugin.video.onlinetv.ru"
-       name="OnlineTV.ru  [Beta]"
-       version="0.0.4.5"
+       name="OnlineTV.ru"
+       version="0.1.0"
        provider-name="MazurokNN">
   <requires>
     <import addon="xbmc.python" version="2.1.0"/>
@@ -48,8 +48,8 @@
   </extension>
   <extension point="xbmc.addon.metadata">
     <platform>all</platform>
-    <summary>http://www.onlinetv.ru</summary>
-    <description lang="ru">http://www.onlinetv.ru</description>
+    <summary>Онлайн ТВ - первое интерактивное телевидение</summary>
+    <description lang="ru">Видео материалы с сайта http://www.onlinetv.ru</description>
   </extension>
 </addon>
 
@@ -94,8 +94,8 @@
 </addon>
 
 <addon id="plugin.video.videomore.ru"
-       name="Videomore.ru (СТС Медиа) [Beta]"
-       version="0.0.5"
+       name="Videomore.ru (СТС Медиа)"
+       version="0.1.0"
        provider-name="MazurokNN">
   <requires>
     <import addon="xbmc.python" version="2.1.0"/>
