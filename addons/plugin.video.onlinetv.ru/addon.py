@@ -17,7 +17,7 @@ xbmcplugin.setContent(plugin_handle, 'movies')
  	
 months = {'янв':'1', 'фев':'2', 'мар':'3', 'апр':'4', 'май':'5', 'мая':'5', 'июн':'6', 'июл':'7', 'авг':'8', 'сен':'9', 'окт':'10', 'ноя':'11', 'дек':'12'}
 
-#ARGB
+#AARRGGBB
 clGreen	     = '[COLOR FF008000]%s[/COLOR]' 
 clDodgerblue = '[COLOR FF1E90FF ]%s[/COLOR]'
 clDimgray 	 = '[COLOR FF696969 ]%s[/COLOR]'
@@ -57,7 +57,6 @@ def Search(params):
 			dt = day+'/'+mon+'/'+dt_re.group(3)
 		else:
 			dt = '-/-/-'	
-
 		tcUrl = 'rtmp://213.85.95.122:1935/archive'
 		app   = 'archive'
 		pr    = 'mp4:'		
@@ -90,9 +89,10 @@ def Live(params):
 		if pub_date < now:	
 			tcUrl = 'rtmp://213.85.95.122:1935/event'
 			app   = 'event'	
-			pr    = ''		
-			url_ = {'mode':'Play','title':i['header'].encode('UTF-8'), 'id':i['id'],'redirect':'true', 'tcUrl':tcUrl, 'app':app, 'pr':pr}		
-			AddItem(clGreen('В Эфире')+' (%s) '%(dt_str)+i['header'].encode('UTF-8'), url=url_)
+			pr    = 'no'		
+			url = '/video/%s/'%(i['id'])
+			url_ = {'mode':'PlayDlg','title':i['header'].encode('UTF-8'), 'redirect':'true', 'tcUrl':tcUrl, 'app':app, 'pr':pr, 'url':url}
+			AddItem(clGreen%('В Эфире')+' (%s) '%(dt_str)+i['header'].encode('UTF-8'), url=url_, ico= img)
 		else:
 			AddItem(clDodgerblue%('Анонс')+ ' (%s)   '%(dt_str)+i['header'].encode('UTF-8'), url={'mode':''},ico= img, isFolder =False)
 	xbmcplugin.endOfDirectory(plugin_handle)
@@ -198,7 +198,9 @@ def PlayDlg(params):
 			
 def Play(params):
 	redirect = params['redirect']
+		
 	url ='http://www.onlinetv.ru'+urllib.unquote(params['url'])
+	print params
 	title = urllib.unquote(params['title'])
 	try:
 		tcUrl_ = urllib.unquote(params['tcUrl'])
@@ -219,7 +221,7 @@ def Play(params):
 	swfUrl  = re.compile('swfobject.embedSWF\("(.+?)"').findall(str(scr.encode('UTF-8')))[0]
 	rtmp    = re.compile('file:"(.+?)"').findall(str(scr.encode('UTF-8')))
 	rtmp    = rtmp[0].split(',')
-	rtmpPr =  (pr_ if redirect=='true' else '')
+	rtmpPr =  (pr_ if (redirect=='true')and(pr_!='no') else '')
 	if len(rtmp)==2:
 		rtmpPlayHQ  = rtmpPr + rtmp[1]
 	else:
@@ -239,12 +241,8 @@ def Play(params):
 		link=tcUrl+' app='+app+' swfUrl='+swfUrl+' PlayPath='+rtmpPlay
 	else:
 		link = mobileVideo
-			
+
 	item = xbmcgui.ListItem(title, iconImage = '', thumbnailImage = '')
 	item.setInfo(type="Video", infoLabels={"Title":title})
-	
-	#item.setProperty('mimetype', 'video/flv')
-	#item.addStreamInfo("video", {"codec": "h264", "width": 960, "height": 540})
-	#item.addStreamInfo('audio', {'codec': 'no-audio'})
 	
 	xbmc.Player().play(link, item)
