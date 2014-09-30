@@ -18,6 +18,24 @@
   </extension>
 </addon>
 
+<addon id="plugin.video.cxz.to"
+       name="cxz.to (fs.ua) [beta]"
+       version="0.0.1"
+       provider-name="MazurokNN">
+  <requires>
+    <import addon="xbmc.python" version="2.1.0"/>
+  </requires>
+  <extension point="xbmc.python.pluginsource"
+            library="default.py">
+        <provides>video</provides>
+  </extension>
+  <extension point="xbmc.addon.metadata">
+    <platform>all</platform>
+    <summary></summary>
+    <description lang="ru"></description>
+  </extension>
+</addon>
+
 <addon id="plugin.video.goodline.cam"
        name="Камеры Godline в Кузбассе"
        version="0.0.1"
