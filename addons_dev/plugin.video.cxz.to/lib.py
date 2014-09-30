@@ -44,7 +44,8 @@ def Get_url(url, headers={}, Post = None, GETparams={}, JSON=False, Proxy=None, 
 		Data = js	
 	return Data
 
-def AddItem(title, url={}, isFolder=True, img='', ico='', info={}, property={}):
+def AddItem(title, mode='', url={}, isFolder=False, img='', ico='', info={}, property={}):
+	if mode: url['mode'] = mode
 	uri = '%s?%s' % (sys.argv[0], urllib.urlencode(url))
 	item = xbmcgui.ListItem(title, iconImage = ico, thumbnailImage = img)
 	if info:
@@ -55,3 +56,6 @@ def AddItem(title, url={}, isFolder=True, img='', ico='', info={}, property={}):
 		for key in property:
 			item.setProperty(key, property[key])
 	xbmcplugin.addDirectoryItem(int(sys.argv[1]), uri, item, isFolder)
+
+def AddFolder(title, mode='', url={}, isFolder=True, img='', ico='', info={}, property={}):
+	AddItem(title=title, mode=mode, url=url, isFolder=isFolder, img=img, ico=ico, info=info, property=property)
