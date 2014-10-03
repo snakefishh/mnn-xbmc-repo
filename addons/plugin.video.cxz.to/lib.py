@@ -5,14 +5,23 @@ import urllib, urllib2, cookielib, sys, os
 import xbmcplugin, xbmcgui, xbmcaddon, xbmc
 
 addon_name 	= sys.argv[0].replace('plugin://', '')
-addon_data_path= xbmc.translatePath(os.path.join("special://profile/addon_data", addon_name))
+addon_data_path = xbmc.translatePath(os.path.join("special://profile/addon_data", addon_name))
+addon_path = xbmc.translatePath(os.path.join("special://home/addons", addon_name))
 if (sys.platform == 'win32') or (sys.platform == 'win64'):
 	addon_data_path = addon_data_path.decode('utf-8')
+	addon_path      = addon_path
+addon_ico = addon_path+'icon.png'
+
 cookie_path =addon_data_path+'cookie'
 
 User_Agent = 'Mozilla/5.0 (Windows NT 6.1; WOW64; rv:31.0) Gecko/20100101 Firefox/31.0'
 
-	
+def xbmcMessage(mess, tm, h=addon_name):
+	xbmc.executebuiltin('XBMC.Notification("%s", "%s", %s, "%s")' % (h, mess, tm, addon_ico))
+
+def uriencode(p):
+	 return '%s?%s' % (sys.argv[0], urllib.urlencode(p))
+
 def DelCookie():
 	if os.path.exists(cookie_path):
 		os.remove(cookie_path)
@@ -68,10 +77,12 @@ def Get_url(url, headers={}, Post = None, GETparams={}, JSON=False, Proxy=None, 
 	if Cookie: cookie.save()
 	return Data
 
-def AddItem(title, mode='', url={}, isFolder=False, img='', ico='', info={}, property={}):
+def AddItem(title, mode='', url={}, isFolder=False, img='', ico='', info={}, property={}, cmItems=[]):
 	if mode: url['mode'] = mode
 	uri = '%s?%s' % (sys.argv[0], urllib.urlencode(url))
 	item = xbmcgui.ListItem(title, iconImage = ico, thumbnailImage = img)
+	if cmItems:
+		item.addContextMenuItems(cmItems)
 	if info:
 		type = info['type']
 		del(info['type'])
@@ -81,5 +92,5 @@ def AddItem(title, mode='', url={}, isFolder=False, img='', ico='', info={}, pro
 			item.setProperty(key, property[key])
 	xbmcplugin.addDirectoryItem(int(sys.argv[1]), uri, item, isFolder)
 
-def AddFolder(title, mode='', url={}, isFolder=True, img='', ico='', info={}, property={}):
-	AddItem(title=title, mode=mode, url=url, isFolder=isFolder, img=img, ico=ico, info=info, property=property)
+def AddFolder(title, mode='', url={}, isFolder=True, img='', ico='', info={}, property={}, cmItems=[]):
+	AddItem(title=title, mode=mode, url=url, isFolder=isFolder, img=img, ico=ico, info=info, property=property, cmItems=cmItems)

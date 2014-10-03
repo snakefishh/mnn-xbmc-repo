@@ -20,6 +20,10 @@ site_url='http://cxz.to'
 clGreen	     = '[COLOR FF008000]%s[/COLOR]' 
 clDodgerblue = '[COLOR FF1E90FF ]%s[/COLOR]'
 clDimgray 	 = '[COLOR FF696969 ]%s[/COLOR]'
+clAliceblue  = '[COLOR FFF0F8FF ]%s[/COLOR]'
+
+Headers={}####################################
+
 
 def Login(login, passw):
 	url = site_url+'/login.aspx'
@@ -55,9 +59,7 @@ def Get_url_lg(url, headers={}, Post = None, GETparams={}, JSON=False, Proxy=Non
 			xbmc.executebuiltin('XBMC.Notification("%s", "%s", %s, "%s")' % (addon_name, 'Ошибка Авторизации', 100, 100))
 		else:
 			return True, LgData
-
 	return False, Data
-
 
 def start(params):
 	try:
@@ -70,20 +72,18 @@ def start(params):
 
 	if Login:
 		AddFolder('Избранное', 'Favourites')
+	AddFolder('Поиск', 'SearchDlg')
 
-#категории
-	header_menu = Soup.find('div', 'b-header__menu')
+	#header_menu = Soup.find('div', 'b-header__menu')
 	header_menu_section = Soup.findAll('a', 'b-header__menu-section-link')
 	for section in header_menu_section:
 		title = section.string.encode('UTF-8')
 		AddFolder(title, 'Cat', {'href':section['href']})
 
-	title = 'Самое просматриваемое'
-	AddFolder(title, 'MostViewed')
+	#title = 'Самое просматриваемое'
+	#AddFolder(title, 'MostViewed')
 
 	AddItem('_'*30+chr(10)+' ')
-
-#Популярные материалы
 
 	pr_page   = Soup.find('a', 'previous-link')
 	if pr_page:
@@ -105,7 +105,18 @@ def start(params):
 		title = pop.find('span', 'b-poster-detail__title').string
 		field = pop.find('span', 'b-poster-detail__field').string
 		title +='  '+field
-		AddFolder(title.encode('UTF-8'), 'Content', {'href':href}, img=img)
+
+		ContextMenu=[]
+		if Login:
+			cmenu={'mode'  :'ADFav',
+				   'mode2' :'favorites',
+				   'mode3' :'add',
+				   'href'  :href}
+			cmenu1=cmenu.copy()
+			cmenu1['mode2']='forlater'
+			ContextMenu = [(clAliceblue%('cxz.to Добавить В Избранное'), 'XBMC.RunPlugin(%s)'%uriencode(cmenu)),
+						   (clAliceblue%('cxz.to Отложить на Будущее'), 'XBMC.RunPlugin(%s)'%uriencode(cmenu1))]
+		AddFolder(title.encode('UTF-8'), 'Content', {'href':href}, img=img, cmItems=ContextMenu)
 
 	next_page = Soup.find('a', 'next-link')
 	if next_page:
@@ -119,7 +130,6 @@ def start(params):
 	xbmcplugin.endOfDirectory(plugin_handle, updateListing=upd)
 
 def MostViewed(params):
-
 	url = site_url
 	Data =Get_url(url)
 	Soup = BeautifulSoup(Data)
@@ -135,7 +145,7 @@ def MostViewed(params):
 
 def Cat(params):
 	url =site_url+urllib.unquote_plus(params['href'])
-	Data =Get_url(url)
+	Login, Data =Get_url_lg(url)
 	Soup = BeautifulSoup(Data)
 	tega=Soup.findAll('a', 'b-poster-tile__link')
 
@@ -155,7 +165,18 @@ def Cat(params):
 		href = 	a['href']
 		img = a.find('img')['src']
 		title = a.find('span', 'b-poster-tile__title-full').string.replace('\t','').replace('\n', '')
-		AddFolder(title.encode('UTF-8'),'Content',{'href':href}, img=img)
+
+		ContextMenu=[]
+		if Login:
+			cmenu={'mode'  :'ADFav',
+				   'mode2' :'favorites',
+				   'mode3' :'add',
+				   'href'  :href}
+			cmenu1=cmenu.copy()
+			cmenu1['mode2']='forlater'
+			ContextMenu = [(clAliceblue%('cxz.to Добавить В Избранное'), 'XBMC.RunPlugin(%s)'%uriencode(cmenu)),
+						   (clAliceblue%('cxz.to Отложить на Будущее'), 'XBMC.RunPlugin(%s)'%uriencode(cmenu1))]
+		AddFolder(title.encode('UTF-8'),'Content',{'href':href}, img=img, cmItems=ContextMenu)
 
 	next_page = Soup.find('a', 'next-link')
 	if next_page:
@@ -167,9 +188,6 @@ def Cat(params):
 	except:
 		upd=False
 	xbmcplugin.endOfDirectory(plugin_handle, updateListing=upd)
-
-
-
 
 def Favourites(params):
 	AddFolder('В процессе',    'Favourites2', {'page':'inprocess'})
@@ -198,15 +216,17 @@ def Favourites2(params):
 	xbmcplugin.endOfDirectory(plugin_handle)
 
 def GetFavourites(params):
+	curpage= params['curpage']
+	page = params['page']
 	url = site_url+'/myfavourites.aspx?ajax&'
 	ajax={
 		'section'    :params['section'],
 		'subsection' :params['subsection'],
 		'rows'       :'2',
-		'curpage'    :params['curpage'],
+		'curpage'    :curpage,
 		'action'     :'get_list',
 		'setrows'    :'4',
-		'page'       :params['page']
+		'page'       : page
 		}
 	url += urllib.urlencode(ajax)
 	js = Get_url(url, JSON=True, Cookie=True)
@@ -215,20 +235,28 @@ def GetFavourites(params):
 	Soup = BeautifulSoup(Data)
 	tega = Soup.findAll('a')
 
-	if (int(params['curpage'])>0):
+	if (int(curpage)>0):
 		url ={'section':params['section'], 'subsection':params['subsection'], 'page':params['page'],
-			  'curpage':str(int(params['curpage'])-1),'upd':'upd'}
-		AddFolder('<<<<', 'GetFavourites', url)
+			  'curpage':str(int(curpage)-1),'upd':'upd'}
+		AddFolder(clGreen%('< Страница '+str(int(curpage))), 'GetFavourites', url)
 	for a in tega:
 		href = a['href']
 		img  = re.compile("url\s*\('(.+?)'\)").findall(a['style'])[0]
 		title= a.find('span').string
-		AddFolder(title.encode('UTF-8'), 'Content',{'href':href}, img=img, ico=img)
 
-	if (int(params['curpage'])<int(maxpages)-1):
-		url ={'section':params['section'], 'subsection':params['subsection'], 'page':params['page'],
-			  'curpage':str(int(params['curpage'])+1),'upd':'upd'}
-		AddFolder('>>>>>>', 'GetFavourites', url)
+		ContextMenu=[]
+		if page!='recommended':
+			cmenu={'mode'  :'ADFav',
+				   'mode2' :page,
+				   'mode3' :'del',
+				   'href'  :href}
+			ContextMenu = [(clAliceblue%('cxz.to Удалить Из Категории'), 'XBMC.RunPlugin(%s)'%uriencode(cmenu))]
+		AddFolder(title.encode('UTF-8'), 'Content',{'href':href}, img=img, ico=img, cmItems=ContextMenu)
+
+	if (int(curpage)<int(maxpages)-1):
+		url ={'section':params['section'], 'subsection':params['subsection'], 'page':page,
+			  'curpage':str(int(curpage)+1),'upd':'upd'}
+		AddFolder(clGreen%('Страница '+str(int(curpage)+2)+' >'), 'GetFavourites', url)
 
 	try:
 		upd = params['upd']=='upd'
@@ -236,23 +264,85 @@ def GetFavourites(params):
 		upd=False
 	xbmcplugin.endOfDirectory(plugin_handle, updateListing=upd)
 
+def SearchDlg(params):
+	Kb = xbmc.Keyboard()
+	Kb.setHeading('Поиск')
+	Kb.doModal()
+	if not Kb.isConfirmed(): return
+	search = Kb.getText()
+	Search({'search':search, 'page':'0'})
 
+def Search(params):
+	def parse(page):
+		page = page['href']
+		page = page.split('?')[1].split('&')
+		nsearch = page[0].split('=')[1].encode('UTF-8')
+		if len(page)==2:
+			npage   = page[1].split('=')[1]
+		else:
+			npage='0'
+		return  nsearch, npage
 
+	url= site_url+'/search.aspx?search='+params['search']+'&page='+params['page']
+	print url
 
+	Login, Data =Get_url_lg(url)
+
+	Soup = BeautifulSoup(Data)
+	try:
+		Sresult = Soup.find('div', 'main')
+		Sresult =Sresult.findAll('table', recursive=False)
+	except:
+		xbmcMessage('Ничего не найдено', 7000)
+		return
+
+	pr_page = Soup.find('a', 'previous-link')
+	if pr_page:
+		ps = parse(pr_page)
+		AddFolder(clGreen%('< Страница '+str(int(ps[1])+1)),'Search',{'search':ps[0], 'page':str(ps[1]),'upd':'upd'})
+
+	for table in Sresult:
+		tr_s = table.findAll('tr', recursive=False)
+		for tr in tr_s:
+			a = tr.find('a', 'title')
+			href  = a['href']
+			title = a.string
+			img = tr.find('img')['src']
+
+			ContextMenu=[]
+			if Login:
+				cmenu={'mode'  :'ADFav',
+					   'mode2' :'favorites',
+					   'mode3' :'add',
+					   'href'  :href}
+				cmenu1=cmenu.copy()
+				cmenu1['mode2']='forlater'
+				ContextMenu = [(clAliceblue%('cxz.to Добавить В Избранное'), 'XBMC.RunPlugin(%s)'%uriencode(cmenu)),
+							   (clAliceblue%('cxz.to Отложить на Будущее'), 'XBMC.RunPlugin(%s)'%uriencode(cmenu1))]
+			AddFolder(title, 'Content', {'href':href}, ico=img, img=img, cmItems=ContextMenu)
+
+	next_page = Soup.find('a', 'next-link')
+	if next_page:
+		ps = parse(next_page)
+		AddFolder(clGreen%('Страница '+str(int(ps[1])+1)+' >'),'Search',{'search':ps[0], 'page':str(ps[1]), 'upd':'upd'})
+	try:
+		upd = params['upd']=='upd'
+	except:
+		upd=False
+	xbmcplugin.endOfDirectory(plugin_handle, updateListing=upd)
 
 def Content(params):
 	href=urllib.unquote(params['href'])
 	url=site_url+href+'?ajax'
-	print url
 
 	query={}
-	query['download']='1'
-	query['view']='1'
-	query['view_embed']='0'
-	query['blocked']='0'
-	query['folder_quality']='null'
-	query['folder_lang']='null'
-	query['folder_translate']='null'
+#	query['download']='1'
+#	query['view']='1'
+#	query['view_embed']='0'
+#	query['blocked']='0'
+#	query['folder_quality']='null'
+#	query['folder_lang']='null'
+#	query['folder_translate']='null'
 	try:
 		query['folder']=params['rel']
 	except:
@@ -260,21 +350,29 @@ def Content(params):
 
 	for qr in query:
 		url+='&'+qr+'='+query[qr]
-	Data =Get_url(url)
+
+	Data =Get_url(url, Cookie=True)
 	Soup = BeautifulSoup(Data)
 
 	li = Soup.findAll('li', 'folder')
+	isFolders=False
 	for l in li:
 		a = l.find('a', 'title')
 		title= a.string
 		if title==None:
 			title = l.find('a', 'title').b.string
+		lang = a['class']
+		lang = re.compile('\sm\-(\w+)\s').findall(lang)
+		if lang:
+			lang=lang[0].upper()+' '
+		else:
+			lang=''
+
 		rel = re.compile('\d+').findall(a['rel'])[0]
 		size = l.findAll('span','material-size')
 		sz=''
 		for size_ in size:
 			sz+=' '+size_.string
-
 		sz = sz.encode('UTF-8').replace('&nbsp;', ' ')
 
 		details = l.find('span', 'material-details').string
@@ -282,24 +380,51 @@ def Content(params):
 		date = l.find('span','material-date').string
 		date= date.encode('UTF-8')
 
-		title = '[B]'+clGreen%(title.encode('UTF-8')+' '+sz)+'[/B]'+chr(10)
-		title += '[I]'+clDimgray%(details+' '+date)+'[/I]'
-
+		title = '[B]'+lang.encode('UTF-8')+title.encode('UTF-8')+' '+sz+'[/B]'+chr(10)
+		title += '      [I]'+clDimgray%(details+' '+date)+'[/I]'
 		AddFolder(title, 'Content', {'rel':rel, 'href':href})
+		isFolders=True
 
 	li = Soup.findAll('li', 'b-file-new')
-	for l in li:
-		title = l.find('span', 'b-file-new__material-filename-text')
-		if title == None:
-			title = l.find('span', 'b-file-new__link-material-filename-text')
-		title=title.string
-		a= l.find('a', 'b-file-new__link-material-download')
-		href = a['href']
-		size = a.span.string
-
-		AddItem(title+' '+size,'Play',{'href':href})
-
+	if True:#not isFolders:
+		for l in li:
+			title = l.find('span', 'b-file-new__material-filename-text')
+			if title == None:
+				title = l.find('span', 'b-file-new__link-material-filename-text')
+			title=title.string
+			a= l.find('a', 'b-file-new__link-material-download')
+			href = a['href']
+			size = a.span.string
+			AddItem('   '+title+' '+size,'Play',{'href':href})
 	xbmcplugin.endOfDirectory(plugin_handle)
+
+def ADFav(params):
+	href = urllib.unquote(params['href'])
+	mode = params['mode2']
+	if params['mode3']=='add':
+		url = site_url+href
+		Login, Data =Get_url_lg(url)
+		if not Login: return
+		Soup=BeautifulSoup(Data)
+
+		add_to = Soup.find('div', 'b-tab-item__add-to')
+		infav   =add_to.findAll(True, style='display: none;')
+
+		f = False
+		for i in infav:
+			future    = i.find('span', 'b-tab-item__add-to-future-inner')
+			favourite = i.find('span', 'b-tab-item__add-to-favourite-inner')
+			if (future)and(mode=='forlater'): f=True
+			if (favourite)and(mode=='favorites'): f = True
+		if f:
+			xbmcMessage('Материал Уже Есть В Избранном',7000)
+			return
+
+	id = re.compile('\/(\w+)-').findall(href)[0]
+	url = site_url+'/addto/%s/%s?json'%(mode, id)
+	Data =Get_url(url, JSON=True, Cookie=True)
+	xbmcMessage(Data['ok'].encode('UTF-8'), 7000)
+	if params['mode3']=='del':xbmc.executebuiltin('Container.Refresh')
 
 def Play(params):
 
