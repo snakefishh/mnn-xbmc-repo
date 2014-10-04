@@ -101,7 +101,8 @@ def start(params):
 	poster_detail = section_list.findAll('a', 'b-poster-detail__link')
 	for pop in poster_detail:
 		href = pop['href']
-		img = pop.find('img' ,src=True)['src']
+		img   = pop.find('img' ,src=True)['src']
+		imgup = img.replace('/6/', '/1/')
 		title = pop.find('span', 'b-poster-detail__title').string
 		field = pop.find('span', 'b-poster-detail__field').string
 		title +='  '+field
@@ -116,7 +117,7 @@ def start(params):
 			cmenu1['mode2']='forlater'
 			ContextMenu = [(clAliceblue%('cxz.to Добавить В Избранное'), 'XBMC.RunPlugin(%s)'%uriencode(cmenu)),
 						   (clAliceblue%('cxz.to Отложить на Будущее'), 'XBMC.RunPlugin(%s)'%uriencode(cmenu1))]
-		AddFolder(title.encode('UTF-8'), 'Content', {'href':href}, img=img, cmItems=ContextMenu)
+		AddFolder(title.encode('UTF-8'), 'Content', {'href':href}, img=imgup, ico=img, cmItems=ContextMenu)
 
 	next_page = Soup.find('a', 'next-link')
 	if next_page:
@@ -140,7 +141,8 @@ def MostViewed(params):
 		title = poster.find('span', 'm-poster-new__short_title').string
 		st_img = poster.find('span', 'b-poster-new__image-poster')['style']
 		img=re.compile("url\('(.+?)'\)").findall(st_img)[0]
-		AddFolder(title.encode('UTF-8'), 'Content', {'href':href}, img=img)
+		imgup = img.replace('/6/', '/1/')
+		AddFolder(title.encode('UTF-8'), 'Content', {'href':href}, img=imgup, ico=img)
 	xbmcplugin.endOfDirectory(plugin_handle)
 
 def Cat(params):
@@ -164,7 +166,9 @@ def Cat(params):
 	for a in tega:
 		href = 	a['href']
 		img = a.find('img')['src']
-		title = a.find('span', 'b-poster-tile__title-full').string.replace('\t','').replace('\n', '')
+		imgup = img.replace('/6/', '/1/')
+		title  = a.find('span', 'b-poster-tile__title-full').string.replace('\t','').replace('\n', '')
+		detail = a.find('span', 'b-poster-tile__title-info-items').string
 
 		ContextMenu=[]
 		if Login:
@@ -176,7 +180,7 @@ def Cat(params):
 			cmenu1['mode2']='forlater'
 			ContextMenu = [(clAliceblue%('cxz.to Добавить В Избранное'), 'XBMC.RunPlugin(%s)'%uriencode(cmenu)),
 						   (clAliceblue%('cxz.to Отложить на Будущее'), 'XBMC.RunPlugin(%s)'%uriencode(cmenu1))]
-		AddFolder(title.encode('UTF-8'),'Content',{'href':href}, img=img, cmItems=ContextMenu)
+		AddFolder(title.encode('UTF-8')+'  '+detail.encode('UTF-8'),'Content',{'href':href}, img=imgup,ico=img, cmItems=ContextMenu)
 
 	next_page = Soup.find('a', 'next-link')
 	if next_page:
@@ -242,6 +246,7 @@ def GetFavourites(params):
 	for a in tega:
 		href = a['href']
 		img  = re.compile("url\s*\('(.+?)'\)").findall(a['style'])[0]
+		imgup = img.replace('/13/', '/1/')
 		title= a.find('span').string
 
 		ContextMenu=[]
@@ -251,7 +256,7 @@ def GetFavourites(params):
 				   'mode3' :'del',
 				   'href'  :href}
 			ContextMenu = [(clAliceblue%('cxz.to Удалить Из Категории'), 'XBMC.RunPlugin(%s)'%uriencode(cmenu))]
-		AddFolder(title.encode('UTF-8'), 'Content',{'href':href}, img=img, ico=img, cmItems=ContextMenu)
+		AddFolder(title.encode('UTF-8'), 'Content',{'href':href}, img=imgup, ico=img, cmItems=ContextMenu)
 
 	if (int(curpage)<int(maxpages)-1):
 		url ={'section':params['section'], 'subsection':params['subsection'], 'page':page,
@@ -284,7 +289,6 @@ def Search(params):
 		return  nsearch, npage
 
 	url= site_url+'/search.aspx?search='+params['search']+'&page='+params['page']
-	print url
 
 	Login, Data =Get_url_lg(url)
 
@@ -308,6 +312,7 @@ def Search(params):
 			href  = a['href']
 			title = a.string
 			img = tr.find('img')['src']
+			imgup = img.replace('/5/', '/1/')
 
 			ContextMenu=[]
 			if Login:
@@ -319,7 +324,7 @@ def Search(params):
 				cmenu1['mode2']='forlater'
 				ContextMenu = [(clAliceblue%('cxz.to Добавить В Избранное'), 'XBMC.RunPlugin(%s)'%uriencode(cmenu)),
 							   (clAliceblue%('cxz.to Отложить на Будущее'), 'XBMC.RunPlugin(%s)'%uriencode(cmenu1))]
-			AddFolder(title, 'Content', {'href':href}, ico=img, img=img, cmItems=ContextMenu)
+			AddFolder(title, 'Content', {'href':href}, ico=img, img=imgup, cmItems=ContextMenu)
 
 	next_page = Soup.find('a', 'next-link')
 	if next_page:
@@ -424,7 +429,9 @@ def ADFav(params):
 	url = site_url+'/addto/%s/%s?json'%(mode, id)
 	Data =Get_url(url, JSON=True, Cookie=True)
 	xbmcMessage(Data['ok'].encode('UTF-8'), 7000)
-	if params['mode3']=='del':xbmc.executebuiltin('Container.Refresh')
+	if params['mode3']=='del':
+		xbmc.sleep(1000)
+		xbmc.executebuiltin('Container.Refresh')
 
 def Play(params):
 
