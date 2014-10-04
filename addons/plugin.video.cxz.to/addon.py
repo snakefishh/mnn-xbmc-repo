@@ -397,10 +397,13 @@ def Content(params):
 			if title == None:
 				title = l.find('span', 'b-file-new__link-material-filename-text')
 			title=title.string
+			a= l.find('a', 'b-file-new__link-material')
+			href= a['href']
 			a= l.find('a', 'b-file-new__link-material-download')
-			href = a['href']
+			href_dl = a['href']
 			size = a.span.string
-			AddItem('   '+title+' '+size,'Play',{'href':href})
+			prop={'IsPlayable':'true'}
+			AddItem('   '+title+' '+size,'Play',{'href':href, 'href_dl':href_dl}, property=prop)
 	xbmcplugin.endOfDirectory(plugin_handle)
 
 def ADFav(params):
@@ -434,10 +437,29 @@ def ADFav(params):
 		xbmc.executebuiltin('Container.Refresh')
 
 def Play(params):
+	link    = site_url+urllib.unquote(params['href'])
+	link_dl = site_url+urllib.unquote(params['href_dl'])
+	Login, Data = Get_url_lg(link)#????????
 
-	link = site_url+urllib.unquote(params['href'])
 
-	item = xbmcgui.ListItem('   ', iconImage = '', thumbnailImage = '')
+	playlist = re.compile("(?s)playlist:\s*\[\s*\{\s*(.+?)\s*\}\s*\]").findall(Data)
+	if not playlist: return
+	playlist= playlist[0].replace('\n','').replace('\t','').replace(' ','').replace('download_url','')
+	urls = re.compile("url:'([^']+).+?file_id:'([^']+)").findall(playlist)
+	if not urls:return
+
+	pl={}
+	for i in urls:
+		pl[i[1]]= site_url+i[0]
+
+	file_id = link.split('=')[1]
+
+
+	item = xbmcgui.ListItem('   ', iconImage = '', thumbnailImage = '', path=pl[file_id])
+	item.setProperty('mimetype', 'video/flv')
 	item.setInfo(type="Video", infoLabels={"Title":'  '})
 
-	xbmc.Player().play(link, item)
+	#xbmc.Player().play(pl[file_id], item)
+
+	xbmcplugin.setResolvedUrl(plugin_handle, True, item)
+
