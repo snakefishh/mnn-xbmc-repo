@@ -15,6 +15,7 @@ if (sys.platform == 'win32') or (sys.platform == 'win64'):
 	addon_data_path = addon_data_path.decode('utf-8')
 
 plugin_handle	= int(sys.argv[1])
+print plugin_handle
 xbmcplugin.setContent(plugin_handle, 'movies')
 site_url='http://cxz.to'
 
@@ -152,14 +153,17 @@ def SetSort(params):
 		set=params['set']
 	except:
 		for i in params:
-			AddItem(urllib.unquote(i), 'SetSort', {'set':'set', 'sort':urllib.unquote(params[i])})
-		xbmcplugin.endOfDirectory(plugin_handle)
+			AddFolder(urllib.unquote(i), 'SetSort', {'set':'set', 'sort':urllib.unquote(params[i]), '111':urllib.unquote(params['111'])})
+		xbmcplugin.endOfDirectory(plugin_handle, True, True)
+
 	else:
 		sort= urllib.unquote(params['sort']).split('?')[1]
 		addon.setSetting('sort', sort)
 		addon.setSetting('update_f', '1')
-		xbmc.executebuiltin('Action(Back)')
-		xbmc.executebuiltin('Container.Refresh')
+
+		Cat({'href':urllib.unquote(params['111']),'upd':'upd'})
+		#xbmc.executebuiltin('Action(Back)')
+		#xbmc.executebuiltin('Container.Refresh')
 
 def SetGroup(params):
 	with open(addon_data_path+'/filters','rb') as F:
@@ -179,8 +183,8 @@ def SetGroup(params):
 		if mode2 =='notgroup':
 			addon.setSetting('group', '')
 			addon.setSetting('update_f', '1')
-			xbmc.executebuiltin('Action(Back)')
-			xbmc.executebuiltin('Container.Refresh')
+			#xbmc.executebuiltin('Action(Back)')
+			#xbmc.executebuiltin('Container.Refresh')
 			return
 		if mode2 =='по годам':
 			now_year = int(datetime.date.today().year)
@@ -198,10 +202,10 @@ def SetGroup(params):
 			addon.setSetting('TypeGroup', 'По Годам')
 			addon.setSetting('NameGroup', params['year'])
 			addon.setSetting('filetr','')
-			xbmc.executebuiltin('Action(Back)')
-			xbmc.executebuiltin('Action(Back)')
-			xbmc.executebuiltin('Action(Back)')
-			xbmc.executebuiltin('Container.Refresh')
+			#xbmc.executebuiltin('Action(Back)')
+			#xbmc.executebuiltin('Action(Back)')
+			#xbmc.executebuiltin('Action(Back)')
+			#xbmc.executebuiltin('Container.Refresh')
 			return
 
 		elif mode2 =='по жанрам':
@@ -211,7 +215,7 @@ def SetGroup(params):
 			main = Soup.find('div', 'main')
 			tega = main.findAll('a')
 			for a in tega:
-				AddItem(a.string.encode('UTF-8'), 'SetGroup', {'mode2':'set_film_genre', 'href':a['href'], 'NameGroup':a.string})
+				AddFolder(a.string.encode('UTF-8'), 'SetGroup', {'mode2':'set_film_genre', 'href':a['href'], 'NameGroup':a.string})
 		elif mode2 =='set_film_genre':
 			href =  urllib.unquote_plus(params['href'])
 			tmp = href.split('/')
@@ -222,11 +226,12 @@ def SetGroup(params):
 			addon.setSetting('TypeGroup', 'По Жанрам')
 			addon.setSetting('NameGroup', urllib.unquote_plus(params['NameGroup']))
 			addon.setSetting('filetr','')
-			xbmc.executebuiltin('Action(Back)')
-			xbmc.executebuiltin('Action(Back)')
-			xbmc.executebuiltin('Container.Refresh')
-			return
-	xbmcplugin.endOfDirectory(plugin_handle)
+			#xbmc.executebuiltin('Action(Back)')
+			#xbmc.executebuiltin('Action(Back)')
+			#xbmc.executebuiltin('Container.Refresh')
+			Cat({})
+			#return
+	xbmcplugin.endOfDirectory(plugin_handle, True, True)
 
 def SetFilter(params):
 	with open(addon_data_path+'/filters','rb') as F:
@@ -279,12 +284,12 @@ def SetFilter(params):
 						i['check']=''
 					i['check']= check if i['check']!= check else ''
 
-			xbmc.executebuiltin('Action(Back)')
-			xbmc.executebuiltin('Container.Refresh')
+			#xbmc.executebuiltin('Action(Back)')
+			#xbmc.executebuiltin('Container.Refresh')
 
 		with open(addon_data_path+'/filters','wb') as F:
 			cPickle.dump(filterjs,F)
-	xbmcplugin.endOfDirectory(plugin_handle)
+	xbmcplugin.endOfDirectory(plugin_handle, True, True)
 
 def Cat(params):
 	update_f    = addon.getSetting('update_f')
@@ -321,6 +326,7 @@ def Cat(params):
 	wsort = {}
 	for i in getsort:
 		wsort[i.find('span', 'b-section-controls__sort-popup-item-text').string]= i['href']
+		wsort['111'] = cat_href
 	sort_selected = Soup.find('span', 'b-section-controls__sort-selected-item selected').string
 
 
