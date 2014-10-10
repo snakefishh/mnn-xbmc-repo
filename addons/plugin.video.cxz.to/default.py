@@ -19,9 +19,10 @@ def get_params():
 	return param
 
 params = get_params()
+
 try:
 	mode = params['mode']
-	del params['mode']
+	#del params['mode']
 except:
 	mode = 'start'
 try: 
