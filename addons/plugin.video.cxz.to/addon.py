@@ -156,128 +156,116 @@ def MostViewed(params):
 		AddFolder(title.encode('UTF-8'), 'Content', {'href':href}, img=imgup, ico=img)
 	xbmcplugin.endOfDirectory(plugin_handle)
 
-
-
 def SetSort(params):
 	cathref = urllib.unquote(params['cathref'])
-	try:
-		set = params['set']
-	except:
-		sortd = {'по дате обновления':'sort=new', 'по рейтингу':'sort=rating',
-				 'по году выпуска':'sort=year', 'по популярности':'sort=popularity',
-				 'в тренде':'sort=trend'}
-		for i in sortd:
-			AddItem(urllib.unquote(i), 'SetSort', {'set':'set', 'sort':sortd[i], 'cathref':cathref})
-		xbmcplugin.endOfDirectory(plugin_handle,updateListing=False, cacheToDisc=True)
+	s=[['в тренде',  'по дате обновления','по рейтингу', 'по году выпуска', 'по популярности'],
+	   ['sort=trend','sort=new',          'sort=rating', 'sort=year',       'sort=popularity']]
+
+	dialog = xbmcgui.Dialog()
+	ret = dialog.select('Сортировка', s[0])
+	if ret ==-1:
+		return
+
+	sort = s[1][ret]
+	tmp = cathref.split('?')
+	if len(tmp)==1:
+		cathref +='?'+sort
 	else:
-		sort = urllib.unquote(params['sort'])
-		tmp = cathref.split('?')
-		if len(tmp)==1:
-			cathref +='?'+sort
+		if 'sort' not in cathref:
+			cathref += '&'+sort
 		else:
-			if 'sort' not in cathref:
-				cathref += '&'+sort
-			else:
-				cathref = tmp[0]+'?'
-				tmp = tmp[1].split('&')
-				for i in tmp:
-					cathref += (i if 'sort' not in i else sort)+'&'
-
-		xbmc.executebuiltin('Container.Update(%s?%s, replace)'%(sys.argv[0],urllib.urlencode({'mode':'Cat','href':cathref})))
-
-
-
+			cathref = tmp[0]+'?'
+			tmp = tmp[1].split('&')
+			for i in tmp:
+				cathref += (i if 'sort' not in i else sort)+'&'
+	xbmc.executebuiltin('Container.Update(%s?%s)'%(sys.argv[0],urllib.urlencode({'mode':'Cat','href':cathref, 'upd':'upd'})))
 
 def SetGroup(params):
+	cathref = urllib.unquote(params['cathref'])
 	with open(addon_data_path+'/filters','rb') as F:
 			filterjs = cPickle.load(F)
 	for fil in filterjs:
 		if fil['title'].encode('UTF-8')== 'Группы':
 			break
 
-	cathref = urllib.unquote(params['cathref'])
-	try:
-		mode2 = urllib.unquote_plus(params['mode2'])
-	except:
-		AddItem('Без Группировки','SetGroup', {'mode2':'notgroup', 'cathref':cathref})
-		for i in fil['items']:
-			AddFolder(i.encode('UTF-8'),'SetGroup', {'mode2':i, 'href':fil['items'][i], 'cathref':cathref})
+	k = fil['items'].keys()
+	k.insert(0, u'Без Группировки')
+	dialog = xbmcgui.Dialog()
+	ret = dialog.select('Группы', k)
+	if ret ==-1:
+		return
 
-	else:
-		if mode2 =='notgroup':
-			tmp = cathref.split('?')
-			if len(tmp)>1:
-				get = '?'+tmp[1]
-			else:
-				get = ''
-			tmp = tmp[0][1:-1].split('/')
-			cathref = '/'+tmp[0]+'/'+get
-			xbmc.executebuiltin('Container.Update(%s?%s, replace)'%(sys.argv[0],urllib.urlencode({'mode':'Cat','href':cathref})))
+	var=k[ret].encode('UTF-8')
+	if var=='Без Группировки':
+		tmp = cathref.split('?')
+		if len(tmp)>1:
+			get = '?'+tmp[1]
+		else:
+			get = ''
+		tmp = tmp[0][1:-1].split('/')
+		cathref = '/'+tmp[0]+'/'+get
+
+	elif var=='по годам':
+		now_year = int(datetime.date.today().year)
+		q1 = now_year%10
+		q2 = int(now_year//10)*10
+		y10 = []
+		y10.append(str(q2)+' - '+str(q2+q1))
+		for i in range(q2-10,1920,-10):
+			y10.append(str(i)+' - '+str(i+9))
+		ret = dialog.select('По Годам', y10)
+		if ret ==-1:
 			return
-		if mode2 =='по годам':
-			now_year = int(datetime.date.today().year)
-			q1 = now_year%10
-			q2 = int(now_year//10)*10
-			AddFolder(str(q2)+' - '+str(q2+q1), 'SetGroup', {'mode2':'year1','ran1':str(q2), 'ran2':str(q2+q1+1), 'cathref':cathref})
-			for i in range(q2-10,1920,-10):
-				AddFolder(str(i)+' - '+str(i+9), 'SetGroup', {'mode2':'year1','ran1':str(i), 'ran2':str(i+10), 'cathref':cathref})
-		elif  mode2 =='year1':
-			for i in range(int(params['ran1']), int(params['ran2'])):
-				AddItem(str(i), 'SetGroup', {'mode2':'setyear', 'year':i, 'cathref':cathref})
-		elif  mode2 =='setyear':
-			tmp = cathref.split('?')
-			if len(tmp)>1:
-				get = '?'+tmp[1]
-			else:
-				get = ''
-			tmp = tmp[0][1:-1].split('/')
-			cathref = '/%s/year/%s/%s'%(tmp[0], params['year'], get)
-
-			xbmc.executebuiltin('Container.Update(%s?%s, replace)'%(sys.argv[0],urllib.urlencode({'mode':'Cat','href':cathref})))
+		y1=[]
+		for i in range(int(y10[ret][0:4]), int(y10[ret][-4:])+1):
+			 y1.append(str(i))
+		ret = dialog.select('По Годам', y1)
+		if ret ==-1:
 			return
 
-		elif mode2 =='по жанрам':
-			href =  urllib.unquote_plus(params['href'])
-			Data = Get_url(href)
-			Soup =BeautifulSoup(Data)
-			main = Soup.find('div', 'main')
-			tega = main.findAll('a')
-			for a in tega:
-				AddItem(a.string.encode('UTF-8'), 'SetGroup', {'mode2':'set_film_genre', 'href':a['href'] , 'cathref':cathref})
-		elif mode2 =='set_film_genre':
-
-			newhref = urllib.unquote(params['href'])
+		tmp = cathref.split('?')
+		if len(tmp)>1:
+			get = '?'+tmp[1]
+		else:
+			get = ''
+		tmp = tmp[0][1:-1].split('/')
+		cathref = '/%s/year/%s/%s'%(tmp[0], y1[ret], get)
 
 
-			tmp = cathref.split('?')
-			if len(tmp)>1:
-				href = newhref+'?'+tmp[1]
-			else:
-				href = newhref
-			xbmc.executebuiltin('Container.Update(%s?%s, replace)'%(sys.argv[0],urllib.urlencode({'mode':'Cat','href':href})))
+	elif var == 'по жанрам':
+		href = fil['items'][u'по жанрам']
+
+		Data = Get_url(href)
+		Soup =BeautifulSoup(Data)
+		main = Soup.find('div', 'main')
+		tega = main.findAll('a')
+		genres={}
+		for a in tega:
+			genres[a.string]=a['href']
+		g = genres.keys()
+		ret = dialog.select('По Жанрам', g)
+		if ret ==-1:
 			return
 
-	xbmcplugin.endOfDirectory(plugin_handle,updateListing=False, cacheToDisc=True)
+		newhref = genres[g[ret]]
+		tmp = cathref.split('?')
+		if len(tmp)>1:
+			tmp1 = re.sub('page=\d+', '', tmp[1])
+			cathref = newhref+'?'+tmp1.replace('&','')
+		else:
+			cathref = newhref
+	xbmc.executebuiltin('Container.Update(%s?%s)'%(sys.argv[0],urllib.urlencode({'mode':'Cat','href':cathref, 'upd':'upd'})))
+
 
 def SetFilter(params):
-	endOfDir=True
+	cathref = urllib.unquote(params['cathref'])
 	with open(addon_data_path+'/filters','rb') as F:
 			filterjs = cPickle.load(F)
-#	try:
-#		params['reset']
-#	except:
-#		pass
-#	else:
-#		for fil in filterjs:
-#			fil['check']=''
-#		with open(addon_data_path+'/filters','wb') as F:
-#			cPickle.dump(filterjs,F)
 
+	dialog = xbmcgui.Dialog()
 
-	cathref = urllib.unquote(params['cathref'])
-	try:
-		mode = params['mode2']
-	except:
+	while True:
+		f=[]
 		for fil in filterjs:
 			try:    check = fil['check']
 			except: check = ''
@@ -285,59 +273,72 @@ def SetFilter(params):
 				title = fil['title'].encode('UTF-8')
 				if check:
 					title += '  : '+check
-				AddFolder(title ,'SetFilter', {'mode2':'select', 'title':fil['title'],'cathref':cathref})
-		AddItem('               Применить', 'SetFilter',{'mode2':'ApplyFilter', 'cathref':cathref})
-	else:
-		if mode=='select':
-			for fil in filterjs:
-				tit = fil['title'].encode('UTF-8')
-				if (tit == urllib.unquote_plus(params['title']))and(tit!='Группы'):
-					break
-			for i in fil['items']:
-				try:    check = fil['check']
-				except: check = ''
-				if i.encode('UTF-8')==check:
-					title = '[x] '+i.encode('UTF-8')
-				else:
-					title = '[ ] '+i.encode('UTF-8')
-				AddItem(title, 'SetFilter', {'mode2':'CheckFilter', 'title':fil['title'], 'check':i,'cathref':cathref})
+				f.append(title)
+		f.append(clGreen%'<Применить>')
 
-		elif mode == 'CheckFilter':
-			ch_title = urllib.unquote_plus(params['title'])
-			check    = urllib.unquote_plus(params['check'])
-			for i in filterjs:
-				if i['title'].encode('UTF-8')==ch_title:
-					try:
-						i['check']
-					except:
-						i['check']=''
-					i['check']= check if i['check']!= check else ''
-
-
-			xbmc.executebuiltin('Action(Back)')
-			xbmc.executebuiltin('Container.Refresh')
-			#xbmc.executebuiltin('Container.Update(%s?%s, replace)'%(sys.argv[0],urllib.urlencode({'mode':'SetFilter','href':'1'})))
-
-		elif mode == 'ApplyFilter':
-			print cathref
-
-			xbmc.executebuiltin('Container.Update(%s?%s, replace)'%(sys.argv[0],urllib.urlencode({'mode':'Cat','href':cathref})))
+		ret = dialog.select('Группы', f)
+		if ret ==-1:
 			return
+		if ret==len(f)-1:
+			break
+
+		for fil in filterjs:
+			tit = fil['title'].encode('UTF-8')
+			if (tit in f[ret])and(tit!='Группы'):
+				break
+		f_1=[]
+		for i in fil['items']:
+			try:    check = fil['check']
+			except: check = ''
+
+			if i.encode('UTF-8')==check:
+				title = '[x] '+i.encode('UTF-8')
+			else:
+				title = '[ ] '+i.encode('UTF-8')
+
+			f_1.append(title)
+
+		ret = dialog.select('Группы', f_1)
+		if ret ==-1:
+			continue
+
+		ch_title = fil['title']
+		check    = f_1[ret][4:]
+		for i in filterjs:
+			if i['title']==ch_title:
+				try:
+					i['check']
+				except:
+					i['check']=''
+				i['check']= check if i['check']!= check else ''
+
+	fl=''
+	fl2=''
+	for fil in filterjs:
+		try:    check = fil['check']
+		except: check = ''
+		if fil['title'].encode('UTF-8')!= 'Группы':
+			title = fil['title'].encode('UTF-8')
+			if check:
+				tmp = fil['items'][check.decode('UTF-8')].split('/')[-2]
+				print tmp
+				if 'fl_' in tmp:
+					fl += tmp
+				else:
+					fl2 += tmp+'/'
+
+	newhref = '/'+ cathref.split('/')[1]+('/fl'+fl.replace('fl_','_')+'/' if fl else '/') +fl2
+	tmp = cathref.split('?')
+	if len(tmp)>1:
+		tmp1 = re.sub('page=\d+', '', tmp[1])
+		cathref = newhref+'?'+tmp1.replace('&','')
+	else:
+		cathref = newhref
 
 
-
-
-		with open(addon_data_path+'/filters','wb') as F:
-			cPickle.dump(filterjs,F)
-
-	xbmcplugin.endOfDirectory(plugin_handle, updateListing=False, cacheToDisc=True)
-
-
-
-
+	xbmc.executebuiltin('Container.Update(%s?%s)'%(sys.argv[0],urllib.urlencode({'mode':'Cat','href':cathref, 'upd':'upd'})))
 
 def Cat(params):
-
 	cat_href = urllib.unquote_plus(params['href'])
 	url =site_url+ cat_href
 
@@ -345,6 +346,7 @@ def Cat(params):
 	Soup = BeautifulSoup(Data)
 
 	sort_selected  = Soup.find('span', 'b-section-controls__sort-selected-item selected').string
+	is_fil_selected   = False
 	group_selected = Soup.find(True, 'm-section-controls__title-item_position_last').h1.string
 
 	section_menu = Soup.find('div', 'b-section-menu')
@@ -355,6 +357,9 @@ def Cat(params):
 		menu_title = ul.find('b', 'b-section-menu__item-title')
 		if menu_title:
 			rec['title']=menu_title.string
+			tega = ul.findAll('a', 'selected')
+			if tega :is_fil_selected=True
+
 			tega = ul.findAll('a')
 			items = {}
 			for a in tega:
@@ -374,12 +379,13 @@ def Cat(params):
 		with open(addon_data_path+'/filters','wb') as F:
 			cPickle.dump(filterjs,F)
 
-	AddFolder('Сортировка: '+sort_selected.encode('UTF-8'), 'SetSort', {'cathref':cat_href})
-	AddFolder('Группы:     '+group_selected.encode('UTF-8'),'SetGroup',{'cathref':cat_href})
-	AddFolder('Фильтры:    ','SetFilter', {'cathref':cat_href})
 
+	grTitle = 'Группа        : '+ (group_selected.encode('UTF-8') if not is_fil_selected else '')
+	flTitle = 'Фильтр       : '  + (group_selected.encode('UTF-8') if is_fil_selected else '')
 
-
+	AddItem('Сортировка : '+sort_selected.encode('UTF-8'), 'SetSort', {'cathref':cat_href})
+	AddItem(grTitle,'SetGroup',{'cathref':cat_href})
+	AddItem(flTitle,'SetFilter', {'cathref':cat_href})
 	AddItem('_'*30+chr(10)+' ')
 
 
@@ -566,7 +572,7 @@ def Search(params):
 				cmenu1['mode2']='forlater'
 				ContextMenu = [(clAliceblue%('cxz.to Добавить В Избранное'), 'XBMC.RunPlugin(%s)'%uriencode(cmenu)),
 							   (clAliceblue%('cxz.to Отложить на Будущее'), 'XBMC.RunPlugin(%s)'%uriencode(cmenu1))]
-			AddFolder(title, 'Content', {'href':href}, ico=img, img=imgup, cmItems=ContextMenu)
+			AddFolder(title, 'Content', {'href':href, 'title' :title}, ico=img, img=imgup, cmItems=ContextMenu)
 
 	next_page = Soup.find('a', 'next-link')
 	if next_page:
