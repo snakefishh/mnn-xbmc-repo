@@ -33,7 +33,7 @@ def Login(login, passw):
 	Data =Get_url(url, Post=Post, Cookie=True)
 	return Data
 
-def Get_url_lg(url, headers={}, Post = None, GETparams={}, JSON=False, Proxy=None):
+def Get_url_lg(url, headers={}, Post = None, GETparams={}, JSON=False, Proxy=None, NoMessage=True):
 
 	login =addon.getSetting('User')
 	passw =addon.getSetting('password')
@@ -58,37 +58,24 @@ def Get_url_lg(url, headers={}, Post = None, GETparams={}, JSON=False, Proxy=Non
 		else:
 			return True, Data
 		if not lg:
-			xbmcMessage('Ошибка Авторизации',5000)
+			if not NoMessage: xbmcMessage('Ошибка Авторизации',5000)
 		else:
 			return True, LgData
 	return False, Data
 
 def start(params):
-
-
-	#################################
-
-
-
-	#################################
-
-
-
-
-
 	try:
 		href= urllib.unquote_plus(params['href'])
 	except:
 		href=''
 	url = site_url+href
-	Login, Data =Get_url_lg(url)
+	Login, Data =Get_url_lg(url, NoMessage=False)
 	Soup = BeautifulSoup(Data)
 
 	if Login:
 		AddFolder('Избранное', 'Favourites')
 	AddFolder('Поиск', 'SearchDlg')
 
-	#header_menu = Soup.find('div', 'b-header__menu')
 	header_menu_section = Soup.findAll('a', 'b-header__menu-section-link')
 	for section in header_menu_section:
 		title = section.string.encode('UTF-8')
@@ -241,7 +228,10 @@ def SetGroup(params):
 		tega = main.findAll('a')
 		genres={}
 		for a in tega:
-			genres[a.string]=a['href']
+			try:
+				a.parent['class']
+			except:
+				genres[a.string]=a['href']
 		g = genres.keys()
 		ret = dialog.select('По Жанрам', g)
 		if ret ==-1:
@@ -269,18 +259,20 @@ def SetFilter(params):
 		for fil in filterjs:
 			try:    check = fil['check']
 			except: check = ''
-			if fil['title'].encode('UTF-8')!= 'Группы':
-				title = fil['title'].encode('UTF-8')
-				if check:
-					title += '  : '+check
-				f.append(title)
+			title = fil['title'].encode('UTF-8')
+			if check:
+				title += '  : '+check
+			f.append(title)
 		f.append(clGreen%'<Применить>')
 
-		ret = dialog.select('Группы', f)
+		ret = dialog.select('Фильтр', f)
 		if ret ==-1:
 			return
 		if ret==len(f)-1:
 			break
+		if f[ret]=='Группы':
+			SetGroup({'cathref':cathref})
+			return
 
 		for fil in filterjs:
 			tit = fil['title'].encode('UTF-8')
@@ -298,7 +290,7 @@ def SetFilter(params):
 
 			f_1.append(title)
 
-		ret = dialog.select('Группы', f_1)
+		ret = dialog.select('Фильтр', f_1)
 		if ret ==-1:
 			continue
 
@@ -346,8 +338,17 @@ def Cat(params):
 	Soup = BeautifulSoup(Data)
 
 	sort_selected  = Soup.find('span', 'b-section-controls__sort-selected-item selected').string
-	is_fil_selected   = False
-	group_selected = Soup.find(True, 'm-section-controls__title-item_position_last').h1.string
+	group_selected = Soup.findAll(True, 'b-section-controls__title-item')
+	tmp=''
+	for i in group_selected:
+		try:
+			tmp+=i.span.string +','
+		except:
+			try:
+				tmp+=i.h1.string +','
+			except:
+				pass
+	group_selected = tmp[:-1]
 
 	section_menu = Soup.find('div', 'b-section-menu')
 	tegul = section_menu.findAll('ul')
@@ -357,9 +358,6 @@ def Cat(params):
 		menu_title = ul.find('b', 'b-section-menu__item-title')
 		if menu_title:
 			rec['title']=menu_title.string
-			tega = ul.findAll('a', 'selected')
-			if tega :is_fil_selected=True
-
 			tega = ul.findAll('a')
 			items = {}
 			for a in tega:
@@ -379,17 +377,10 @@ def Cat(params):
 		with open(addon_data_path+'/filters','wb') as F:
 			cPickle.dump(filterjs,F)
 
-
-	grTitle = 'Группа        : '+ (group_selected.encode('UTF-8') if not is_fil_selected else '')
-	flTitle = 'Фильтр       : '  + (group_selected.encode('UTF-8') if is_fil_selected else '')
-
+	flTitle = 'Фильтр       : '  + group_selected.encode('UTF-8')
 	AddItem('Сортировка : '+sort_selected.encode('UTF-8'), 'SetSort', {'cathref':cat_href})
-	AddItem(grTitle,'SetGroup',{'cathref':cat_href})
 	AddItem(flTitle,'SetFilter', {'cathref':cat_href})
 	AddItem('_'*30+chr(10)+' ')
-
-
-
 
 	tega=Soup.findAll('a', 'b-poster-tile__link')
 
