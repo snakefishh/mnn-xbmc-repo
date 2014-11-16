@@ -20,9 +20,10 @@ site_url='http://cxz.to'
 
 #AARRGGBB
 clGreen	     = '[COLOR FF008000]%s[/COLOR]' 
-clDodgerblue = '[COLOR FF1E90FF ]%s[/COLOR]'
-clDimgray 	 = '[COLOR FF696969 ]%s[/COLOR]'
-clAliceblue  = '[COLOR FFF0F8FF ]%s[/COLOR]'
+clDodgerblue = '[COLOR FF1E90FF]%s[/COLOR]'
+clDimgray 	 = '[COLOR FF696969]%s[/COLOR]'
+clAliceblue  = '[COLOR FFF0F8FF]%s[/COLOR]'
+clRed        = '[COLOR FFFF0000]%s[/COLOR]'
 
 Headers={}####################################
 
@@ -205,7 +206,7 @@ def SetGroup(params):
 			return
 		y1=[]
 		for i in range(int(y10[ret][0:4]), int(y10[ret][-4:])+1):
-			 y1.append(str(i))
+			y1.append(str(i))
 		ret = dialog.select('По Годам', y1)
 		if ret ==-1:
 			return
@@ -532,48 +533,35 @@ def Search(params):
 	Login, Data =Get_url_lg(url)
 
 	Soup = BeautifulSoup(Data)
-	try:
-		Sresult = Soup.find('div', 'main')
-		Sresult =Sresult.findAll('table', recursive=False)
-	except:
+
+	Sresult = Soup.find('div', 'b-search-page__results')
+	if Sresult == None:
 		xbmcMessage('Ничего не найдено', 7000)
 		return
 
-	pr_page = Soup.find('a', 'previous-link')
-	if pr_page:
-		ps = parse(pr_page)
-		AddFolder(clGreen%('< Страница '+str(int(ps[1])+1)),'Search',{'search':ps[0], 'page':str(ps[1]),'upd':'upd'})
+	Sresult = Soup.findAll('a', 'b-search-page__results-item')
 
-	for table in Sresult:
-		tr_s = table.findAll('tr', recursive=False)
-		for tr in tr_s:
-			a = tr.find('a', 'title')
-			href  = a['href']
-			title = a.string
-			img = tr.find('img')['src']
-			imgup = img.replace('/5/', '/1/')
+	for a in Sresult:
+		print a
+		href = a['href']
+		title = a.find('span', 'b-search-page__results-item-title').string
+		img = a.find('span', 'b-search-page__results-item-image').img['src']
+		imgup = img.replace('/13/', '/1/')
 
-			ContextMenu=[]
-			if Login:
-				cmenu={'mode'  :'ADFav',
-					   'mode2' :'favorites',
-					   'mode3' :'add',
-					   'href'  :href}
-				cmenu1=cmenu.copy()
-				cmenu1['mode2']='forlater'
-				ContextMenu = [(clAliceblue%('cxz.to Добавить В Избранное'), 'XBMC.RunPlugin(%s)'%uriencode(cmenu)),
-							   (clAliceblue%('cxz.to Отложить на Будущее'), 'XBMC.RunPlugin(%s)'%uriencode(cmenu1))]
-			AddFolder(title, 'Content', {'href':href, 'title' :title}, ico=img, img=imgup, cmItems=ContextMenu)
+		ContextMenu=[]
+		if Login:
+			cmenu={'mode'  :'ADFav',
+				   'mode2' :'favorites',
+				   'mode3' :'add',
+				   'href'  :href}
+			cmenu1=cmenu.copy()
+			cmenu1['mode2']='forlater'
+			ContextMenu = [(clAliceblue%('cxz.to Добавить В Избранное'), 'XBMC.RunPlugin(%s)'%uriencode(cmenu)),
+						   (clAliceblue%('cxz.to Отложить на Будущее'), 'XBMC.RunPlugin(%s)'%uriencode(cmenu1))]
+		AddFolder(title, 'Content', {'href':href, 'title' :title}, ico=img, img=imgup, cmItems=ContextMenu)
 
-	next_page = Soup.find('a', 'next-link')
-	if next_page:
-		ps = parse(next_page)
-		AddFolder(clGreen%('Страница '+str(int(ps[1])+1)+' >'),'Search',{'search':ps[0], 'page':str(ps[1]), 'upd':'upd'})
-	try:
-		upd = params['upd']=='upd'
-	except:
-		upd=False
-	xbmcplugin.endOfDirectory(plugin_handle, updateListing=upd)
+	xbmcplugin.endOfDirectory(plugin_handle)
+
 
 def Content(params):
 	ctitle=urllib.unquote(params['title'])
@@ -600,9 +588,19 @@ def Content(params):
 	Data =Get_url(url, Cookie=True)
 	Soup = BeautifulSoup(Data)
 
+	isBlocked = Soup.find('div', id='file-block-text')!=None
+	if isBlocked:
+		AddFolder(clRed%'Некоторые файлы заблокированы' + ' Поиск на filmix.net', 'FilmixNet_search', {'search':ctitle})
+
 	li = Soup.findAll('li', 'folder')
 	isFolders=False
+	isSubFolder = False
 	for l in li:
+		try:
+			isSubFolder = l.parent.parent['class']=='folder'
+		except:
+			isSubFolder = False
+
 		a = l.find('a', 'title')
 		title= a.string
 		if title==None:
@@ -628,7 +626,7 @@ def Content(params):
 
 		title = '[B]'+lang.encode('UTF-8')+title.encode('UTF-8')+' '+sz+'[/B]'+chr(10)
 		title += '      [I]'+clDimgray%(details+' '+date)+'[/I]'
-		AddFolder(title, 'Content', {'rel':rel, 'href':href, 'title':ctitle})
+		AddFolder(('   ' if isSubFolder else '')+title, 'Content', {'rel':rel, 'href':href, 'title':ctitle})
 		isFolders=True
 
 	li = Soup.findAll('li', 'b-file-new')
@@ -650,7 +648,8 @@ def Content(params):
 			ContextMenu = [(clAliceblue%('cxz.to Скачать файл'), 'XBMC.RunPlugin(%s)'%uriencode(cmenu))]
 			info={'type':'Video','title':ctitle}
 			prop={'IsPlayable':'true'}
-			AddItem('   '+title+' '+size,'Play',{'href':href, 'href_dl':href_dl}, info=info, property=prop, cmItems=ContextMenu)
+
+			AddItem(('   ' if isFolders else '')+('   ' if isSubFolder else '')+title+' '+size,'Play',{'href':href, 'href_dl':href_dl}, info=info, property=prop, cmItems=ContextMenu)
 	xbmcplugin.endOfDirectory(plugin_handle)
 
 def ADFav(params):
@@ -703,8 +702,10 @@ def Play(params):
 		Login, Data = Get_url_lg(link)
 		playlist = re.compile("(?s)playlist:\s*\[\s*\{\s*(.+?)\s*\}\s*\]").findall(Data)
 		if not playlist: return
+
 		playlist= playlist[0].replace('\n','').replace('\t','').replace(' ','').replace('download_url','')
 		urls = re.compile("url:'([^']+).+?file_id:'([^']+)").findall(playlist)
+
 		if not urls:return
 		pl={}
 		for i in urls:
@@ -712,6 +713,17 @@ def Play(params):
 		with open(addon_data_path+'/playlist','wb') as F:
 			cPickle.dump(pl,F)
 		path = pl[file_id]
+
+	VideoSource =addon.getSetting('VideoSource')
+	if VideoSource=='0':
+		dialog = xbmcgui.Dialog()
+		dialog_items =['Источник 1 (Лучшее Качество)' ,'Источник 2 (Облегченный)']
+		dlg= dialog.select('Источник:', dialog_items)
+		if dlg!=1:
+			path = link_dl
+	elif VideoSource=='1':
+		path = link_dl
+
 
 	item = xbmcgui.ListItem(path=path)
 
@@ -733,3 +745,68 @@ def download(params):
 
 	dl = downloader.SimpleDownloader()
 	dl.download(name.decode('UTF-8'), {'url': url, 'download_path':dir})
+
+def FilmixNet_search(params):
+	import filmixnet
+	search = urllib.unquote_plus(params['search'])
+	result = filmixnet.search(search)
+	for res in result:
+		AddFolder(res['title'],'FilmixNet_content',{'href':res['href']},img=res['img'],ico=res['ico'])
+	xbmcplugin.endOfDirectory(plugin_handle)
+
+def FilmixNet_content(params):
+	href = urllib.unquote(params['href'])
+	import filmixnet
+	tp, cont = filmixnet.Content(href)
+	if not tp:return
+
+	F = open(addon_data_path+'/filmix_playlist', 'w')
+	json.dump(cont, F)
+	F.close()
+
+	if len(cont)>1:
+		for ple in range(0,len(cont)):
+			AddFolder('Плеер '+str(ple+1),'FilmixNet_content2', {'le':ple})
+		xbmcplugin.endOfDirectory(plugin_handle)
+	else:
+		FilmixNet_content2({'le':0})
+
+def FilmixNet_content2(params): #Сезон
+	F = open(addon_data_path+'/filmix_playlist', 'r')
+	cont = json.load(F)
+	F.close()
+
+	if type(cont[int(params['le'])])==dict:
+		for i in cont[int(params['le'])]['playlist']:
+			AddFolder(i['comment'],'FilmixNet_content3', {'le':params['le'], 'le2':i['comment'].encode('UTF-8')})
+		xbmcplugin.endOfDirectory(plugin_handle)
+	else:
+		FilmixNet_play({'title':' ', 'url':cont[int(params['le'])]})
+
+def FilmixNet_content3(params): #Серия
+	le = urllib.unquote(params['le'])
+	le2 = urllib.unquote(params['le2'])
+	F = open(addon_data_path+'/filmix_playlist', 'r')
+	cont = json.load(F)
+	F.close()
+
+	for i in cont[int(params['le'])]['playlist']:
+		if i['comment'].encode('UTF-8')==le2:
+			for j in i['playlist']:
+				AddItem(j['comment'],'FilmixNet_play', {'title':j['comment'].encode('UTF-8'), 'url':j['file']})
+			xbmcplugin.endOfDirectory(plugin_handle)
+
+def FilmixNet_play(params):
+	title = urllib.unquote_plus(params['title'])
+	url = urllib.unquote(params['url'])
+	k = re.compile('\[(.+?)\]').findall(url)
+	if k:
+		dialog = xbmcgui.Dialog()
+		dialog_items =k[0].split(',')
+		dlg= dialog.select('Качество Изображения', dialog_items)
+		if dlg==-1:return
+		url = url.replace('['+k[0]+']', dialog_items[dlg])
+
+	item = xbmcgui.ListItem(title, iconImage = '', thumbnailImage = '')
+	item.setInfo(type="Video", infoLabels={"Title":title})
+	xbmc.Player().play(url, item)

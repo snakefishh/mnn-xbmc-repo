@@ -4,4 +4,6 @@
 	<setting id="password"     label="Пароль"        type="text" option="hidden" default="" />
     <setting type="sep" />
     <setting id="DownloadDir"  label="Путь Для Загрузки" type="folder" />
+    <setting type="sep" />
+    <setting id="VideoSource"  label="Источник Видео" type="enum"  values="Спрашивать|Лучшее Качество|Облегченный"  default="0"/>
 </settings>
