@@ -203,12 +203,14 @@ def programid(params):
 	Headers_['X-Result-Define-Pagination'] = '%s/20'%(page)#номер страницы / элементов в странице]
 	url_ = 'https://api.tvrain.ru/api_v2/programs/%s/articles/'%(params['id'])
 	Data = Get_url(url_, Headers_, JSON=True)
+
 	current_page = Data['current_page']
 	total_pages  = Data['total_pages']
 	for i in Data['elements']:		
 		info= {'type':'Video', 'Title': i['name'].encode('UTF-8'), 'plot':i['name'].encode('UTF-8')}
 		property={'fanart_image':i['preview_img']}
-		AddItem(i['name'].encode('UTF-8'), {'mode':'play','id':i['id']}, isFolder=False, img=i['preview_img'], info=info, property=property)		
+		t = ('[Full] ' if i['is_full']==1 else '')+ i['name'].encode('UTF-8')
+		AddItem(t, {'mode':'play','id':i['id']}, isFolder=False, img=i['preview_img'], info=info, property=property)		
 	if current_page<total_pages:
 		title = 'Далее > %s из %s'%(str(current_page+1),str(total_pages))
 		AddItem(title, {'mode':'programid','id':params['id'],'page':current_page+1})	
@@ -216,18 +218,24 @@ def programid(params):
 			
 def play(params):	
 	url_ = 'https://api.tvrain.ru/api_v2/articles/%s/videos/' %(params['id'])
-	Data = Get_url(url_, Headers, JSON=True)	
+	
+	Data = Get_url(url_, Headers, JSON=True)
+	
 	if not Data:return
 	dialog = xbmcgui.Dialog()
 	dialog_items = []
 	for i in Data[0]['mp4']:
 		dialog_items.append(i)		
 	dlg= dialog.select('Качество Изображения', dialog_items)		
-	Url_  = Data[0]['mp4'][dialog_items[dlg]]	
+	
 	playList = xbmc.PlayList(xbmc.PLAYLIST_VIDEO)
 	playList.clear()	
-	item = xbmcgui.ListItem('Дождь- '+Data[0]['name'].encode('UTF-8'), iconImage = '', thumbnailImage = '')				
-	playList.add(Url_,item)
+				
+	for ch in range(0, len(Data)):
+		item = xbmcgui.ListItem('Дождь- '+Data[ch]['name'].encode('UTF-8'), iconImage = '', thumbnailImage = '')
+		Url_  = Data[ch]['mp4'][dialog_items[dlg]]
+		playList.add(Url_,item)
+		
 	xbmc.Player().play(playList)
 
 def PlayRtmp(params):	
