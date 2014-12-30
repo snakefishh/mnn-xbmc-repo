@@ -42,12 +42,16 @@ def start(params):
 	playList.clear()
 	Data  = Get_url('http://pdd.a42.ru/camera/')
 	if not Data:return(1)
+	
+	Data = Data.replace('data-href', 'hrefzam')
+	
 	soup = BeautifulSoup(Data)	
-	ul = soup.findAll('ul' ,id="cities")
-	cities = re.compile('data-city="(.+?)">(.+?)</a></li>').findall(str(ul))
+	ul = soup.findAll('div' ,id="cities")
+	cities = re.compile('data-city="(.+?)">(.+?)</a>').findall(str(ul))
 	for city in cities:
 		AddItem(city[1], url={'mode':'kam','city':city[1]})
-		kam = soup.findAll('a', attrs={"class" : "maplink"}, href=re.compile('camera#'+city [0]+'.+?'))
+		kam = soup.findAll('a', attrs={"class" : "maplink"}, hrefzam=re.compile('camera#'+city [0]+'.+?'))
+		print kam
 		for j in kam:		
 			Url = j['data-url']
 			PLitem = xbmcgui.ListItem(city[1]+' - '+j.string.encode('UTF-8'), iconImage = '', thumbnailImage = '')

@@ -15,15 +15,70 @@ if (sys.platform == 'win32') or (sys.platform == 'win64'):
 	addon_data_path = addon_data_path.decode('utf-8')
 
 plugin_handle	= int(sys.argv[1])
-#xbmcplugin.setContent(plugin_handle, 'movies')
+xbmcplugin.setContent(plugin_handle, 'movies')
 site_url='http://cxz.to'
 
+class SiteUrlParse:
+	cat=''
+	group=''
+	fl=[]
+	language_custom = ''
+	translate_custom = ''
+	url_qs={}
+
+	def __init__(self, url):
+		from urlparse import urlparse, parse_qs
+		urlp        = urlparse(url)
+
+		self.url_qs = parse_qs(urlp.query)
+		for i in self.url_qs:
+			self.url_qs[i]=self.url_qs[i][0]
+
+		r=re.compile('(film_genre|cast|director|year)/(.+?)[$/]').findall(urlp.path)
+		if r:
+			self.group = r[0][0]+'/'+r[0][1]
+
+		r = re.compile('/fl_(.+?)[$/]').findall(urlp.path)
+		if r:
+			self.fl = r[0].split('_')
+		r = re.compile('/language_custom_(.+?)[$/]').findall(urlp.path)
+		if r:
+			self.language_custom = r[0]
+		r = re.compile('/translate_custom_(.+?)[$/]').findall(urlp.path)
+		if r:
+			self.translate_custom = r[0]
+
+		url_path = urlp.path.rstrip('/').lstrip('/')
+		self.cat = url_path.split('/')[0]
+
+	def con(self):
+		url = '/'+self.cat+'/'
+		if self.fl:
+			url +='fl_'
+			for i in self.fl:
+				url += i+'_'
+			url = url[:-1]+'/'
+
+		if self.group:
+			url +=self.group+'/'
+		if self.language_custom:
+			url += 'language_custom_'+self.language_custom+'/'
+		if self.translate_custom:
+			url += 'translate_custom_'+self.translate_custom+'/'
+		if self.url_qs:
+			url +='?'
+			for i in self.url_qs:
+				url += i+'='+self.url_qs[i]+'&'
+			url = url[:-1]
+		return url
+
 #AARRGGBB
-clGreen	     = '[COLOR FF008000]%s[/COLOR]' 
+clGreen	     = '[COLOR FF008000]%s[/COLOR]'
 clDodgerblue = '[COLOR FF1E90FF]%s[/COLOR]'
 clDimgray 	 = '[COLOR FF696969]%s[/COLOR]'
 clAliceblue  = '[COLOR FFF0F8FF]%s[/COLOR]'
 clRed        = '[COLOR FFFF0000]%s[/COLOR]'
+clPGreen     = '[COLOR FF98FB98]%s[/COLOR]'
 
 Headers={}####################################
 
@@ -65,10 +120,11 @@ def Get_url_lg(url, headers={}, Post = None, GETparams={}, JSON=False, Proxy=Non
 	return False, Data
 
 def start(params):
+
 	try:
 		href= urllib.unquote_plus(params['href'])
 	except:
-		href=''
+		href='/?view=detailed'
 	url = site_url+href
 	Login, Data =Get_url_lg(url, NoMessage=False)
 	Soup = BeautifulSoup(Data)
@@ -81,9 +137,6 @@ def start(params):
 	for section in header_menu_section:
 		title = section.string.encode('UTF-8')
 		AddFolder(title, 'Cat', {'href':section['href']})
-
-	#title = 'Самое просматриваемое'
-	#AddFolder(title, 'MostViewed')
 
 	AddItem('_'*30+chr(10)+' ')
 
@@ -102,12 +155,22 @@ def start(params):
 	section_list = Soup.find('div', 'b-section-list')
 	poster_detail = section_list.findAll('a', 'b-poster-detail__link')
 	for pop in poster_detail:
+		print pop
 		href = pop['href']
 		img   = pop.find('img' ,src=True)['src']
 		imgup = img.replace('/6/', '/1/')
 		title = pop.find('span', 'b-poster-detail__title').string
-		field = pop.find('span', 'b-poster-detail__field').string
-		title +='  '+field
+		tmp = pop.findAll('span', 'b-poster-detail__field')
+		field = tmp[0].string
+		year  =re.compile('(\d{4})').findall(field)[0]
+		cast = tmp[1].string
+		cast = cast.split(',')
+		plot  = pop.find('span', 'b-poster-detail__description').contents[0]
+		vote_positive = pop.find('span', 'b-poster-detail__vote-positive').string
+		vote_negative = pop.find('span', 'b-poster-detail__vote-negative').string
+
+
+		ctitle =title+'  '+field+u' (↑%s ↓%s)'%(clGreen%vote_positive,clRed%vote_negative)
 
 		ContextMenu=[]
 		if Login:
@@ -119,7 +182,9 @@ def start(params):
 			cmenu1['mode2']='forlater'
 			ContextMenu = [(clAliceblue%('cxz.to Добавить В Избранное'), 'XBMC.RunPlugin(%s)'%uriencode(cmenu)),
 						   (clAliceblue%('cxz.to Отложить на Будущее'), 'XBMC.RunPlugin(%s)'%uriencode(cmenu1))]
-		AddFolder(title.encode('UTF-8'), 'Content', {'href':href, 'title':title.encode('UTF-8')}, img=imgup, ico=img, cmItems=ContextMenu)
+
+		info ={'type':'video','plot':plot,'title':title,'year':year,'cast':cast}
+		AddFolder(ctitle.encode('UTF-8'), 'Content', {'href':href, 'title':ctitle.encode('UTF-8')}, info=info, img=imgup, ico=img, cmItems=ContextMenu)
 
 	next_page = Soup.find('a', 'next-link')
 	if next_page:
@@ -129,47 +194,21 @@ def start(params):
 
 	xbmcplugin.endOfDirectory(plugin_handle, updateListing=False, cacheToDisc=True)
 
-def MostViewed(params):
-	url = site_url
-	Data =Get_url(url)
-	Soup = BeautifulSoup(Data)
-	nowviewed = Soup.find('div', 'b-nowviewed__posters')
-	posters = nowviewed.findAll('a', 'b-poster-new__link')
-	for poster in posters:
-		href = poster['href']
-		title = poster.find('span', 'm-poster-new__short_title').string
-		st_img = poster.find('span', 'b-poster-new__image-poster')['style']
-		img=re.compile("url\('(.+?)'\)").findall(st_img)[0]
-		imgup = img.replace('/6/', '/1/')
-		AddFolder(title.encode('UTF-8'), 'Content', {'href':href}, img=imgup, ico=img)
-	xbmcplugin.endOfDirectory(plugin_handle)
-
 def SetSort(params):
-	cathref = urllib.unquote(params['cathref'])
+	caturl = SiteUrlParse(urllib.unquote(params['cathref']))
 	s=[['в тренде',  'по дате обновления','по рейтингу', 'по году выпуска', 'по популярности'],
-	   ['sort=trend','sort=new',          'sort=rating', 'sort=year',       'sort=popularity']]
-
+	   ['trend',     'new',               'rating',      'year',            'popularity']]
 	dialog = xbmcgui.Dialog()
 	ret = dialog.select('Сортировка', s[0])
 	if ret ==-1:
 		return
-
-	sort = s[1][ret]
-	tmp = cathref.split('?')
-	if len(tmp)==1:
-		cathref +='?'+sort
-	else:
-		if 'sort' not in cathref:
-			cathref += '&'+sort
-		else:
-			cathref = tmp[0]+'?'
-			tmp = tmp[1].split('&')
-			for i in tmp:
-				cathref += (i if 'sort' not in i else sort)+'&'
-	xbmc.executebuiltin('Container.Update(%s?%s)'%(sys.argv[0],urllib.urlencode({'mode':'Cat','href':cathref, 'upd':'upd'})))
+	caturl.url_qs['sort']=s[1][ret]
+	xbmc.executebuiltin('Container.Update(%s?%s)'%(sys.argv[0],urllib.urlencode({'mode':'Cat','href':caturl.con(), 'upd':'upd'})))
 
 def SetGroup(params):
-	cathref = urllib.unquote(params['cathref'])
+
+	caturl = SiteUrlParse(urllib.unquote(params['cathref']))
+
 	with open(addon_data_path+'/filters','rb') as F:
 			filterjs = cPickle.load(F)
 	for fil in filterjs:
@@ -185,13 +224,7 @@ def SetGroup(params):
 
 	var=k[ret].encode('UTF-8')
 	if var=='Без Группировки':
-		tmp = cathref.split('?')
-		if len(tmp)>1:
-			get = '?'+tmp[1]
-		else:
-			get = ''
-		tmp = tmp[0][1:-1].split('/')
-		cathref = '/'+tmp[0]+'/'+get
+		caturl.group=''
 
 	elif var=='по годам':
 		now_year = int(datetime.date.today().year)
@@ -211,14 +244,7 @@ def SetGroup(params):
 		if ret ==-1:
 			return
 
-		tmp = cathref.split('?')
-		if len(tmp)>1:
-			get = '?'+tmp[1]
-		else:
-			get = ''
-		tmp = tmp[0][1:-1].split('/')
-		cathref = '/%s/year/%s/%s'%(tmp[0], y1[ret], get)
-
+		caturl.group = 'year/'+y1[ret]
 
 	elif var == 'по жанрам':
 		href = fil['items'][u'по жанрам']
@@ -232,24 +258,18 @@ def SetGroup(params):
 			try:
 				a.parent['class']
 			except:
-				genres[a.string]=a['href']
+				genres[a.string]='/'.join((a['href'].rstrip('/').lstrip('/')).split('/')[1:])
 		g = genres.keys()
 		ret = dialog.select('По Жанрам', g)
 		if ret ==-1:
 			return
 
-		newhref = genres[g[ret]]
-		tmp = cathref.split('?')
-		if len(tmp)>1:
-			tmp1 = re.sub('page=\d+', '', tmp[1])
-			cathref = newhref+'?'+tmp1.replace('&','')
-		else:
-			cathref = newhref
-	xbmc.executebuiltin('Container.Update(%s?%s)'%(sys.argv[0],urllib.urlencode({'mode':'Cat','href':cathref, 'upd':'upd'})))
+		caturl.group=genres[g[ret]]
+	xbmc.executebuiltin('Container.Update(%s?%s)'%(sys.argv[0],urllib.urlencode({'mode':'Cat','href':caturl.con(), 'upd':'upd'})))
 
 
 def SetFilter(params):
-	cathref = urllib.unquote(params['cathref'])
+	caturl = SiteUrlParse(urllib.unquote(params['cathref']))
 	with open(addon_data_path+'/filters','rb') as F:
 			filterjs = cPickle.load(F)
 
@@ -320,16 +340,16 @@ def SetFilter(params):
 				else:
 					fl2 += tmp+'/'
 
+
+
+	#fl_actionfl_our
+	print fl,fl2
 	newhref = '/'+ cathref.split('/')[1]+('/fl'+fl.replace('fl_','_')+'/' if fl else '/') +fl2
-	tmp = cathref.split('?')
-	if len(tmp)>1:
-		tmp1 = re.sub('page=\d+', '', tmp[1])
-		cathref = newhref+'?'+tmp1.replace('&','')
-	else:
-		cathref = newhref
 
 
-	xbmc.executebuiltin('Container.Update(%s?%s)'%(sys.argv[0],urllib.urlencode({'mode':'Cat','href':cathref, 'upd':'upd'})))
+
+	print caturl.con()
+	xbmc.executebuiltin('Container.Update(%s?%s)'%(sys.argv[0],urllib.urlencode({'mode':'Cat','href':caturl.con(), 'upd':'upd'})))
 
 def Cat(params):
 	cat_href = urllib.unquote_plus(params['href'])
@@ -398,6 +418,7 @@ def Cat(params):
 		pg=0
 
 	for a in tega:
+		print a
 		href = 	a['href']
 		img = a.find('img')['src']
 		imgup = img.replace('/6/', '/1/')
