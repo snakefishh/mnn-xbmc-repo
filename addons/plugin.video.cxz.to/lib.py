@@ -14,6 +14,17 @@ addon_ico = addon_path+'icon.png'
 
 cookie_path =addon_data_path+'cookie'
 
+#AARRGGBB
+AA=lambda cl,ff:cl.replace(' FF', ff)
+clGreen	     = '[COLOR FF008000]%s[/COLOR]'
+clDodgerblue = '[COLOR FF1E90FF]%s[/COLOR]'
+clDimgray 	 = '[COLOR FF696969]%s[/COLOR]'
+clAliceblue  = '[COLOR FFF0F8FF]%s[/COLOR]'
+clRed        = '[COLOR FFFF0000]%s[/COLOR]'
+clPGreen     = '[COLOR FF98FB98]%s[/COLOR]'
+
+
+
 User_Agent = 'Mozilla/5.0 (Windows NT 6.1; WOW64; rv:31.0) Gecko/20100101 Firefox/31.0'
 
 def xbmcMessage(mess, tm, h=addon_name):

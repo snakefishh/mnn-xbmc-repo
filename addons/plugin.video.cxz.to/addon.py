@@ -1,4 +1,4 @@
-#!/usr/bin/python
+﻿#!/usr/bin/python
 # -*- coding: utf-8 -*-
 
 import urllib, urllib2, re, sys, os, json, datetime, time
@@ -72,13 +72,6 @@ class SiteUrlParse:
 			url = url[:-1]
 		return url
 
-#AARRGGBB
-clGreen	     = '[COLOR FF008000]%s[/COLOR]'
-clDodgerblue = '[COLOR FF1E90FF]%s[/COLOR]'
-clDimgray 	 = '[COLOR FF696969]%s[/COLOR]'
-clAliceblue  = '[COLOR FFF0F8FF]%s[/COLOR]'
-clRed        = '[COLOR FFFF0000]%s[/COLOR]'
-clPGreen     = '[COLOR FF98FB98]%s[/COLOR]'
 
 Headers={}####################################
 
@@ -125,9 +118,13 @@ def start(params):
 		href= urllib.unquote_plus(params['href'])
 	except:
 		href='/?view=detailed'
+
 	url = site_url+href
 	Login, Data =Get_url_lg(url, NoMessage=False)
 	Soup = BeautifulSoup(Data)
+
+	AddFolder('readpersons1', 'readpersons1')
+
 
 	if Login:
 		AddFolder('Избранное', 'Favourites')
@@ -136,7 +133,7 @@ def start(params):
 	header_menu_section = Soup.findAll('a', 'b-header__menu-section-link')
 	for section in header_menu_section:
 		title = section.string.encode('UTF-8')
-		AddFolder(title, 'Cat', {'href':section['href']})
+		AddFolder(title, 'Cat', {'href':section['href']+'?view=detailed'})
 
 	AddItem('_'*30+chr(10)+' ')
 
@@ -155,44 +152,136 @@ def start(params):
 	section_list = Soup.find('div', 'b-section-list')
 	poster_detail = section_list.findAll('a', 'b-poster-detail__link')
 	for pop in poster_detail:
-		print pop
-		href = pop['href']
-		img   = pop.find('img' ,src=True)['src']
-		imgup = img.replace('/6/', '/1/')
-		title = pop.find('span', 'b-poster-detail__title').string
-		tmp = pop.findAll('span', 'b-poster-detail__field')
-		field = tmp[0].string
-		year  =re.compile('(\d{4})').findall(field)[0]
-		cast = tmp[1].string
-		cast = cast.split(',')
-		plot  = pop.find('span', 'b-poster-detail__description').contents[0]
-		vote_positive = pop.find('span', 'b-poster-detail__vote-positive').string
-		vote_negative = pop.find('span', 'b-poster-detail__vote-negative').string
-
-
-		ctitle =title+'  '+field+u' (↑%s ↓%s)'%(clGreen%vote_positive,clRed%vote_negative)
-
-		ContextMenu=[]
-		if Login:
-			cmenu={'mode'  :'ADFav',
-				   'mode2' :'favorites',
-				   'mode3' :'add',
-				   'href'  :href}
-			cmenu1=cmenu.copy()
-			cmenu1['mode2']='forlater'
-			ContextMenu = [(clAliceblue%('cxz.to Добавить В Избранное'), 'XBMC.RunPlugin(%s)'%uriencode(cmenu)),
-						   (clAliceblue%('cxz.to Отложить на Будущее'), 'XBMC.RunPlugin(%s)'%uriencode(cmenu1))]
-
-		info ={'type':'video','plot':plot,'title':title,'year':year,'cast':cast}
-		AddFolder(ctitle.encode('UTF-8'), 'Content', {'href':href, 'title':ctitle.encode('UTF-8')}, info=info, img=imgup, ico=img, cmItems=ContextMenu)
+		CreateCatItem(pop, True)
 
 	next_page = Soup.find('a', 'next-link')
 	if next_page:
 		next_page =next_page['href']
 		AddFolder(clGreen%('Страница '+str(pg+2)+' >'),'',{'href':next_page,'upd':'upd'})
+	try:
+		upd = params['upd']=='upd'
+	except:
+		upd = False
+	xbmcplugin.endOfDirectory(plugin_handle, updateListing=upd, cacheToDisc=True)
 
+def Cat(params):
+	cat_href = urllib.unquote_plus(params['href'])
+	url =site_url+ cat_href
 
-	xbmcplugin.endOfDirectory(plugin_handle, updateListing=False, cacheToDisc=True)
+	Login, Data =Get_url_lg(url)
+	Soup = BeautifulSoup(Data)
+
+	sort_selected  = Soup.find('span', 'b-section-controls__sort-selected-item selected').string
+	group_selected = Soup.findAll(True, 'b-section-controls__title-item')
+	tmp=''
+	for i in group_selected:
+		try:
+			tmp+=i.span.string +','
+		except:
+			try:
+				tmp+=i.h1.string +','
+			except:
+				pass
+	group_selected = tmp[:-1]
+
+	section_menu = Soup.find('div', 'b-section-menu')
+	tegul = section_menu.findAll('ul')
+	filterjs=[]
+	for ul in tegul:
+		rec ={}
+		menu_title = ul.find('b', 'b-section-menu__item-title')
+		if menu_title:
+			rec['title']=menu_title.string
+			tega = ul.findAll('a')
+			items = {}
+			for a in tega:
+				item_title = a.string
+				if not item_title: item_title = a.find('span').string
+				if a['href']<>'#':#???????????????????????????
+					items[item_title]=a['href']
+			rec['items']=items
+
+			filterjs.append(rec)
+	try:
+		with open(addon_data_path+'/filters','wb') as F:
+			cPickle.dump(filterjs,F)
+	except:
+		if not os.path.exists(addon_data_path):
+				os.makedirs(addon_data_path)
+		with open(addon_data_path+'/filters','wb') as F:
+			cPickle.dump(filterjs,F)
+
+	flTitle = 'Фильтр       : '  + group_selected.encode('UTF-8')
+	AddItem('Сортировка : '+sort_selected.encode('UTF-8'), 'SetSort', {'cathref':cat_href})
+	AddItem(flTitle,'SetFilter', {'cathref':cat_href})
+	AddItem('_'*30+chr(10)+' ')
+
+	pr_page   = Soup.find('a', 'previous-link')
+	if pr_page:
+		pr_page= pr_page['href']
+		pg = re.compile('page=(\d+?$)').findall(pr_page)
+		if pg:
+			pg =int(pg[0])+1
+		else:
+			pg=1
+		AddFolder(clGreen%('< Страница '+str(pg)),'Cat',{'href':pr_page,'upd':'upd'})
+	else:
+		pg=0
+
+	section_list = Soup.find('div', 'b-section-list')
+	poster_detail = section_list.findAll('a', 'b-poster-detail__link')
+	for pop in poster_detail:
+		CreateCatItem(pop)
+
+	next_page = Soup.find('a', 'next-link')
+	if next_page:
+		next_page =next_page['href']
+		AddFolder(clGreen%('Страница '+str(pg+2)+' >'),'Cat',{'href':next_page,'upd':'upd'})
+	try:
+		upd = params['upd']=='upd'
+	except:
+		upd=False
+	xbmcplugin.endOfDirectory(plugin_handle, updateListing=upd, cacheToDisc=True)
+
+def CreateCatItem(pop, mSerials=False):
+	href = pop['href']
+	img   = pop.find('img' ,src=True)['src']
+	imgup = img.replace('/6/', '/1/')
+	title = pop.find('span', 'b-poster-detail__title').string
+	tmp = pop.findAll('span', 'b-poster-detail__field')
+	field = tmp[0].string
+	year  =re.compile('(\d{4})').findall(field)[0]
+	cast = tmp[1].string
+	if cast:
+		cast = cast.split(',')
+	else:
+		cast=[]
+	plot  = pop.find('span', 'b-poster-detail__description').contents[0]
+	vote_positive = pop.find('span', 'b-poster-detail__vote-positive').string
+	vote_negative = pop.find('span', 'b-poster-detail__vote-negative').string
+	quality = pop.findAll('span', 'quality')
+	allquality = ''
+	for qual in quality:
+		allquality += qual['class'].replace('quality', '').replace('m-','').replace(' ', '')+','
+	allquality = allquality[:-1].upper()
+
+	ctitle =('[S] ' if mSerials and 'serials' in href else '')+title+'  '+field+u' (%s ↑%s ↓%s)'%(allquality, AA(clGreen,'80')%vote_positive,AA(clRed,'80')%vote_negative)
+
+	ContextMenu=[]
+	if Login:
+		cmenu={'mode'  :'ADFav',
+			   'mode2' :'favorites',
+			   'mode3' :'add',
+			   'href'  :href}
+		cmenu1=cmenu.copy()
+		cmenu1['mode2']='forlater'
+		ContextMenu = [(clAliceblue%('cxz.to Добавить В Избранное'), 'XBMC.RunPlugin(%s)'%uriencode(cmenu)),
+					   (clAliceblue%('cxz.to Отложить на Будущее'), 'XBMC.RunPlugin(%s)'%uriencode(cmenu1))]
+
+	info ={'type':'video','plot':plot,'title':title,'year':year,'cast':cast}
+	property={'fanart_image':imgup}
+	AddFolder(ctitle.encode('UTF-8'), 'Content', {'href':href, 'title':ctitle.encode('UTF-8')}, info=info, img=imgup, ico=img, cmItems=ContextMenu,property=property)
+
 
 def SetSort(params):
 	caturl = SiteUrlParse(urllib.unquote(params['cathref']))
@@ -265,6 +354,10 @@ def SetGroup(params):
 			return
 
 		caturl.group=genres[g[ret]]
+	caturl.fl=[]
+	caturl.language_custom = ''
+	caturl.translate_custom = ''
+	print caturl.con()
 	xbmc.executebuiltin('Container.Update(%s?%s)'%(sys.argv[0],urllib.urlencode({'mode':'Cat','href':caturl.con(), 'upd':'upd'})))
 
 
@@ -292,7 +385,7 @@ def SetFilter(params):
 		if ret==len(f)-1:
 			break
 		if f[ret]=='Группы':
-			SetGroup({'cathref':cathref})
+			SetGroup({'cathref':caturl.con()})
 			return
 
 		for fil in filterjs:
@@ -325,8 +418,9 @@ def SetFilter(params):
 					i['check']=''
 				i['check']= check if i['check']!= check else ''
 
-	fl=''
-	fl2=''
+	fl=[]
+	l_c=''
+	t_c=''
 	for fil in filterjs:
 		try:    check = fil['check']
 		except: check = ''
@@ -334,125 +428,100 @@ def SetFilter(params):
 			title = fil['title'].encode('UTF-8')
 			if check:
 				tmp = fil['items'][check.decode('UTF-8')].split('/')[-2]
-				print tmp
 				if 'fl_' in tmp:
-					fl += tmp
+					fl.append(tmp.replace('fl_', ''))
 				else:
-					fl2 += tmp+'/'
+					if 'language_custom' in tmp:
+						l_c += tmp.replace('language_custom_', '')
+					elif 'translate_custom' in tmp:
+						t_c +=tmp.replace('translate_custom_', '')
 
 
 
-	#fl_actionfl_our
-	print fl,fl2
-	newhref = '/'+ cathref.split('/')[1]+('/fl'+fl.replace('fl_','_')+'/' if fl else '/') +fl2
-
-
+	caturl.fl=fl
+	caturl.language_custom = l_c
+	caturl.translate_custom = t_c
+	caturl.group=''
 
 	print caturl.con()
 	xbmc.executebuiltin('Container.Update(%s?%s)'%(sys.argv[0],urllib.urlencode({'mode':'Cat','href':caturl.con(), 'upd':'upd'})))
 
-def Cat(params):
-	cat_href = urllib.unquote_plus(params['href'])
-	url =site_url+ cat_href
-
-	Login, Data =Get_url_lg(url)
-	Soup = BeautifulSoup(Data)
-
-	sort_selected  = Soup.find('span', 'b-section-controls__sort-selected-item selected').string
-	group_selected = Soup.findAll(True, 'b-section-controls__title-item')
-	tmp=''
-	for i in group_selected:
-		try:
-			tmp+=i.span.string +','
-		except:
-			try:
-				tmp+=i.h1.string +','
-			except:
-				pass
-	group_selected = tmp[:-1]
-
-	section_menu = Soup.find('div', 'b-section-menu')
-	tegul = section_menu.findAll('ul')
-	filterjs=[]
-	for ul in tegul:
-		rec ={}
-		menu_title = ul.find('b', 'b-section-menu__item-title')
-		if menu_title:
-			rec['title']=menu_title.string
-			tega = ul.findAll('a')
-			items = {}
-			for a in tega:
-				item_title = a.string
-				if not item_title: item_title = a.find('span').string
-				if a['href']<>'#':#???????????????????????????
-					items[item_title]=a['href']
-			rec['items']=items
-
-			filterjs.append(rec)
-	try:
-		with open(addon_data_path+'/filters','wb') as F:
-			cPickle.dump(filterjs,F)
-	except:
-		if not os.path.exists(addon_data_path):
-				os.makedirs(addon_data_path)
-		with open(addon_data_path+'/filters','wb') as F:
-			cPickle.dump(filterjs,F)
-
-	flTitle = 'Фильтр       : '  + group_selected.encode('UTF-8')
-	AddItem('Сортировка : '+sort_selected.encode('UTF-8'), 'SetSort', {'cathref':cat_href})
-	AddItem(flTitle,'SetFilter', {'cathref':cat_href})
-	AddItem('_'*30+chr(10)+' ')
-
-	tega=Soup.findAll('a', 'b-poster-tile__link')
-
-	pr_page   = Soup.find('a', 'previous-link')
-	if pr_page:
-		pr_page= pr_page['href']
-		pg = re.compile('page=(\d+?$)').findall(pr_page)
-		if pg:
-			pg =int(pg[0])+1
-		else:
-			pg=1
-		AddFolder(clGreen%('< Страница '+str(pg)),'Cat',{'href':pr_page,'upd':'upd'})
-	else:
-		pg=0
-
-	for a in tega:
-		print a
-		href = 	a['href']
-		img = a.find('img')['src']
-		imgup = img.replace('/6/', '/1/')
-		title  = a.find('span', 'b-poster-tile__title-full').string.replace('\t','').replace('\n', '')
-		detail = a.find('span', 'b-poster-tile__title-info-items').string
-		title = title.encode('UTF-8')+'  '+detail.encode('UTF-8')
-
-		ContextMenu=[]
-		if Login:
-			cmenu={'mode'  :'ADFav',
-				   'mode2' :'favorites',
-				   'mode3' :'add',
-				   'href'  :href,
-				  }
-			cmenu1=cmenu.copy()
-			cmenu1['mode2']='forlater'
-			ContextMenu = [(clAliceblue%('cxz.to Добавить В Избранное'), 'XBMC.RunPlugin(%s)'%uriencode(cmenu)),
-						   (clAliceblue%('cxz.to Отложить на Будущее'), 'XBMC.RunPlugin(%s)'%uriencode(cmenu1))]
-		AddFolder(title ,'Content',{'href':href, 'title' :title}, img=imgup,ico=img, cmItems=ContextMenu)
-
-	next_page = Soup.find('a', 'next-link')
-	if next_page:
-		next_page =next_page['href']
-		AddFolder(clGreen%('Страница '+str(pg+2)+' >'),'Cat',{'href':next_page,'upd':'upd'})
-	try:
-		upd = params['upd']=='upd'
-	except:
-		upd=False
-	xbmcplugin.endOfDirectory(plugin_handle, updateListing=upd, cacheToDisc=True)
-
-
 
 ###################################################################################
+def readpersons(params):
+	import sqlite3
+	con = sqlite3.connect(addon_data_path+'/directors.db')
+	cur = con.cursor()
+	cur.execute("CREATE TABLE directors (id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, name VARCHAR(50), url VARCHAR(50))")
+	con.commit()
 
+	url = 'http://cxz.to/films/group/director/?all&letter=%s'
+	alf =u'abcdefghijklmnopqrstuvwxyzабвгдеёжзийклмнопрстуфхцчшщэюя'
+	#alf =u'а'
+
+	for letter in alf:
+		page = 0
+		while True:
+			url_ = url%(letter.encode('UTF-8'))
+			if page>0:
+				url_+='&page='+str(page)
+
+			time.sleep(2)
+			Data =Get_url(url_)
+			Soup = BeautifulSoup(Data)
+			content = Soup.find('div', 'l-content-center')
+			content = content.find('table')
+			if content:
+				names = content.findAll('a')
+				for name in names:
+					cur.execute('INSERT INTO directors VALUES (NULL, "%s", "%s");'%(name.string, name['href']))
+			NextPage = Soup.find('a', 'next-link')
+			if NextPage:
+				page+=1
+			else:
+				break
+	con.commit()
+	con.close()
+
+def readpersons1(params):
+	import sqlite3
+	con = sqlite3.connect(addon_data_path+'/casts.db')
+	cur = con.cursor()
+	cur.execute("CREATE TABLE casts (id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, name VARCHAR(50), url VARCHAR(50))")
+	con.commit()
+
+	url = 'http://cxz.to/films/group/cast/?all&letter=%s'
+	alf =u'абвгдеёжзийклмнопрстуфхцчшщэюяabcdefghijklmnopqrstuvwxyz'
+	#alf ='а'
+
+	for letter in alf:
+		print letter.encode('UTF-8')
+		page = 0
+		while True:
+			url_ = url%(letter.encode('UTF-8'))
+			if page>0:
+				url_+='&page='+str(page)
+
+			time.sleep(1)
+			Data =Get_url(url_)
+			Soup = BeautifulSoup(Data)
+			content = Soup.find('div', 'l-content-center')
+			content = content.find('table')
+			if content:
+				names = content.findAll('a')
+				for name in names:
+					try:
+						cur.execute('INSERT INTO casts VALUES (NULL, "%s", "%s");'%(name.string, name['href']))
+					except:
+						print 'Ошибка ', name.string,'  ', name['href']
+			NextPage = Soup.find('a', 'next-link')
+			if NextPage:
+				page+=1
+			else:
+				break
+	con.commit()
+	con.close()
+########################################################
 
 def Favourites(params):
 	AddFolder('В процессе',    'Favourites2', {'page':'inprocess'})
@@ -563,7 +632,6 @@ def Search(params):
 	Sresult = Soup.findAll('a', 'b-search-page__results-item')
 
 	for a in Sresult:
-		print a
 		href = a['href']
 		title = a.find('span', 'b-search-page__results-item-title').string
 		img = a.find('span', 'b-search-page__results-item-image').img['src']
@@ -762,11 +830,12 @@ def download(params):
 
 	url  = site_url+urllib.unquote(params['href'])
 	name= urllib.unquote_plus(params['title'])
-	print name, url
 
 	dl = downloader.SimpleDownloader()
 	dl.download(name.decode('UTF-8'), {'url': url, 'download_path':dir})
 
+
+#--------------------------------
 def FilmixNet_search(params):
 	import filmixnet
 	search = urllib.unquote_plus(params['search'])
