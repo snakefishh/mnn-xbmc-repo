@@ -123,7 +123,7 @@ def start(params):
 	Login, Data =Get_url_lg(url, NoMessage=False)
 	Soup = BeautifulSoup(Data)
 
-	AddFolder('readpersons1', 'readpersons1')
+	#AddFolder('readpersons1', 'readpersons1')
 
 
 	if Login:
@@ -495,9 +495,9 @@ def readpersons1(params):
 	#alf ='а'
 
 	for letter in alf:
-		print letter.encode('UTF-8')
 		page = 0
 		while True:
+			print letter.encode('UTF-8')+str(page)
 			url_ = url%(letter.encode('UTF-8'))
 			if page>0:
 				url_+='&page='+str(page)
@@ -513,7 +513,7 @@ def readpersons1(params):
 					try:
 						cur.execute('INSERT INTO casts VALUES (NULL, "%s", "%s");'%(name.string, name['href']))
 					except:
-						print 'Ошибка ', name.string,'  ', name['href']
+						print 'Ошибка ', name.string.encode('UTF-8')
 			NextPage = Soup.find('a', 'next-link')
 			if NextPage:
 				page+=1
