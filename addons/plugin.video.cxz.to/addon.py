@@ -229,7 +229,10 @@ def Cat(params):
 		pg=0
 
 	section_list = Soup.find('div', 'b-section-list')
+
 	poster_detail = section_list.findAll('a', 'b-poster-detail__link')
+
+
 	for pop in poster_detail:
 		CreateCatItem(pop)
 
@@ -281,7 +284,6 @@ def CreateCatItem(pop, mSerials=False):
 	info ={'type':'video','plot':plot,'title':title,'year':year,'cast':cast}
 	property={'fanart_image':imgup}
 	AddFolder(ctitle.encode('UTF-8'), 'Content', {'href':href, 'title':ctitle.encode('UTF-8')}, info=info, img=imgup, ico=img, cmItems=ContextMenu,property=property)
-
 
 def SetSort(params):
 	caturl = SiteUrlParse(urllib.unquote(params['cathref']))
@@ -354,10 +356,22 @@ def SetGroup(params):
 			return
 
 		caturl.group=genres[g[ret]]
+
+	elif var =='по режиссёрам':
+		Kb = xbmc.Keyboard()
+		Kb.setHeading('Поиск')
+		Kb.doModal()
+		if not Kb.isConfirmed(): return
+		search = Kb.getText()
+
+
+
+	elif var =='по актёрам':
+		pass
+
 	caturl.fl=[]
 	caturl.language_custom = ''
 	caturl.translate_custom = ''
-	print caturl.con()
 	xbmc.executebuiltin('Container.Update(%s?%s)'%(sys.argv[0],urllib.urlencode({'mode':'Cat','href':caturl.con(), 'upd':'upd'})))
 
 
@@ -443,9 +457,7 @@ def SetFilter(params):
 	caturl.translate_custom = t_c
 	caturl.group=''
 
-	print caturl.con()
 	xbmc.executebuiltin('Container.Update(%s?%s)'%(sys.argv[0],urllib.urlencode({'mode':'Cat','href':caturl.con(), 'upd':'upd'})))
-
 
 def Favourites(params):
 	AddFolder('В процессе',    'Favourites2', {'page':'inprocess'})
@@ -542,7 +554,11 @@ def Search(params):
 	# 		npage='0'
 	# 	return  nsearch, npage
 
-	url= site_url+'/search.aspx?search='+params['search']+'&page='+params['page']
+	print params
+	search = urllib.unquote(params['search'])
+
+
+	url= site_url+'/search.aspx?search='+search+'&page='+params['page']
 
 	Login, Data =Get_url_lg(url)
 
@@ -600,6 +616,9 @@ def Content(params):
 
 	Data =Get_url(url, Cookie=True)
 	Soup = BeautifulSoup(Data)
+
+	AddFolder('Дополнительно','Content_plus',{'href':href})
+	AddItem('_'*30+chr(10)+' ','')
 
 	isBlocked = Soup.find('div', id='file-block-text')!=None
 	if isBlocked:
@@ -664,6 +683,37 @@ def Content(params):
 
 			AddItem(('   ' if isFolders else '')+('   ' if isSubFolder else '')+title+' '+size,'Play',{'href':href, 'href_dl':href_dl}, info=info, property=prop, cmItems=ContextMenu)
 	xbmcplugin.endOfDirectory(plugin_handle)
+
+def Content_plus(params):
+	# def GetCasts(params):
+	# 	label = xbmc.getInfoLabel('ListItem.Cast')
+	# 	print label
+	# 	xbmc.executebuiltin('Action(Info)')
+
+	href=urllib.unquote(params['href'])
+	url=site_url+href
+	Data =Get_url(url, Cookie=True)
+	Soup = BeautifulSoup(Data)
+	info = Soup.find('div', 'item-info')
+
+	director_itemprop= info.findAll('span', itemprop="director")
+	AddItem(clGreen%'Режисёр:')
+	for d_item in director_itemprop:
+		director_href = d_item.find('a')['href']
+		director_name = d_item.find('span', itemprop="name").string
+		ContextMenu = [(clAliceblue%('cxz.to Поиск во всех категориях'), 'Container.Update(%s?%s)'%(sys.argv[0],urllib.urlencode({'mode':'Search','search':director_name, 'page':'0'})))]
+		AddFolder(director_name, 'Cat', {'href':director_href+'/?view=detailed'}, cmItems=ContextMenu)
+
+	actor_itemprop= info.findAll('span', itemprop="actor")
+	AddItem(clGreen%'Актёры:')
+	for a_item in actor_itemprop:
+		actor_href = a_item.find('a')['href']
+		actor_name = a_item.find('span', itemprop="name").string
+		ContextMenu = [(clAliceblue%('cxz.to Поиск во всех категориях'), 'Container.Update(%s?%s)'%(sys.argv[0],urllib.urlencode({'mode':'Search','search':actor_name, 'page':'0'})))]
+		AddFolder(actor_name, 'Cat', {'href':actor_href+'/?view=detailed'}, cmItems=ContextMenu)
+
+	xbmcplugin.endOfDirectory(plugin_handle)
+
 
 def ADFav(params):
 	href = urllib.unquote(params['href'])

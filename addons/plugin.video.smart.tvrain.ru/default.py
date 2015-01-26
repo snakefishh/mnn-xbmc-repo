@@ -100,18 +100,19 @@ def schedule(params):
 	except:
 		program_id = None	
 	if not program_id:
-		url_ = 'https://api.tvrain.ru/api_v2/schedule/2014-09-11'
+		url_ = 'https://api.tvrain.ru/api_v2/schedule/2015-01-26'
 		Data = Get_url(url_, Headers, JSON=True)
-		#print Data
+		print Data
 		for i in Data:
 			str_dt = re.match('^.{3}, \d\d .{3} \d\d \d\d:\d\d:\d\d', i['date_start']).group(0) #Fri, 12 Sep 14 06:00:00 
-			dt = datetime.fromtimestamp(time.mktime(time.strptime(str_dt, '%a, %d %b %y %H:%M:%S')))
+			dt = datetime.datetime.fromtimestamp(time.mktime(time.strptime(str_dt, '%a, %d %b %y %H:%M:%S')))
 			title = '[COLOR FF4169E1]%s  [/COLOR]'%(dt.strftime('%d/%m %H:%M'))+ i['program_name']
 			AddItem(title, url={'mode':'schedule', 'program_id':i['program_id'], 'date_start':i['date_start']}, img = i['tv_img'])
 	else:
 		url_ = 'https://api.tvrain.ru/api_v2/programs/%s/articles/'%(program_id)
 		date_start =urllib.unquote_plus(params['date_start'])
 		Data = Get_url(url_, Headers, JSON=True)
+		print Data
 		for i in Data['elements']:
 			#if i['date_active_start']==params['date_start']:
 			print '====='
@@ -123,10 +124,19 @@ def schedule(params):
 def live(params):
 	url_ = 'https://api.tvrain.ru/api_v2/live/'
 	Data = Get_url(url_, Headers, JSON=True)
-		
-	for i in Data['RTMP']:
-		AddItem(i['label'].encode('UTF-8'), url={'mode':'PlayRtmp', 'url':i['url']}, isFolder=False)
-	xbmcplugin.endOfDirectory(plugin_handle)		
+
+	quality = _addon.getSetting('live_quality')
+	
+	if quality == 'Спрашивать':
+		for i in Data['RTMP']:
+			AddItem(i['label'].encode('UTF-8'), url={'mode':'PlayRtmp', 'url':i['url']}, isFolder=False)
+		xbmcplugin.endOfDirectory(plugin_handle)
+	else:
+		for i in Data['RTMP']:
+			if i['label'].encode('UTF-8') == quality:
+				PlayRtmp({'url': urllib.quote(i['url'])})
+				break
+				
 		
 def ourchoice(params):
 	url_ = 'https://api.tvrain.ru/api_v2/widgets/ourchoice/'
@@ -220,25 +230,29 @@ def play(params):
 	url_ = 'https://api.tvrain.ru/api_v2/articles/%s/videos/' %(params['id'])
 	
 	Data = Get_url(url_, Headers, JSON=True)
-	
+
 	if not Data:return
-	dialog = xbmcgui.Dialog()
-	dialog_items = []
-	for i in Data[0]['mp4']:
-		dialog_items.append(i)		
-	dlg= dialog.select('Качество Изображения', dialog_items)		
+	
+	quality = _addon.getSetting('archive_quality')
+	if quality == 'Спрашивать':	
+		dialog = xbmcgui.Dialog()
+		dialog_items = []
+		for i in Data[0]['mp4']:
+			dialog_items.append(i)		
+		dlg= dialog.select('Качество Изображения', dialog_items)		
+		quality = dialog_items[dlg]		
 	
 	playList = xbmc.PlayList(xbmc.PLAYLIST_VIDEO)
 	playList.clear()	
 				
 	for ch in range(0, len(Data)):
 		item = xbmcgui.ListItem('Дождь- '+Data[ch]['name'].encode('UTF-8'), iconImage = '', thumbnailImage = '')
-		Url_  = Data[ch]['mp4'][dialog_items[dlg]]
+		Url_  = Data[ch]['mp4'][quality]
 		playList.add(Url_,item)
 		
 	xbmc.Player().play(playList)
 
-def PlayRtmp(params):	
+def PlayRtmp(params):
 	Url = urllib.unquote_plus(params['url'])	
 	playList = xbmc.PlayList(xbmc.PLAYLIST_MUSIC)
 	playList.clear()		
