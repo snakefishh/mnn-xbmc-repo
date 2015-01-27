@@ -283,7 +283,7 @@ def CreateCatItem(pop, mSerials=False):
 
 	info ={'type':'video','plot':plot,'title':title,'year':year,'cast':cast}
 	property={'fanart_image':imgup}
-	AddFolder(ctitle.encode('UTF-8'), 'Content', {'href':href, 'title':ctitle.encode('UTF-8')}, info=info, img=imgup, ico=img, cmItems=ContextMenu,property=property)
+	AddFolder(ctitle.encode('UTF-8'), 'Content', {'href':href, 'title':title.encode('UTF-8')}, info=info, img=imgup, ico=img, cmItems=ContextMenu,property=property)
 
 def SetSort(params):
 	caturl = SiteUrlParse(urllib.unquote(params['cathref']))
@@ -307,17 +307,13 @@ def SetGroup(params):
 			break
 
 	k = fil['items'].keys()
-	k.insert(0, u'Без Группировки')
 	dialog = xbmcgui.Dialog()
 	ret = dialog.select('Группы', k)
 	if ret ==-1:
 		return
 
 	var=k[ret].encode('UTF-8')
-	if var=='Без Группировки':
-		caturl.group=''
-
-	elif var=='по годам':
+	if var=='по годам':
 		now_year = int(datetime.date.today().year)
 		q1 = now_year%10
 		q2 = int(now_year//10)*10
@@ -358,22 +354,67 @@ def SetGroup(params):
 		caturl.group=genres[g[ret]]
 
 	elif var =='по режиссёрам':
-		Kb = xbmc.Keyboard()
-		Kb.setHeading('Поиск')
-		Kb.doModal()
-		if not Kb.isConfirmed(): return
-		search = Kb.getText()
-
-
+		rez = Search_in_bd('directors')
+		if rez == '0':
+			return
+		caturl.group ='director/'+rez
 
 	elif var =='по актёрам':
-		pass
+		rez = Search_in_bd('casts')
+		if rez == '0':
+			return
+		caturl.group ='cast/'+rez
 
 	caturl.fl=[]
 	caturl.language_custom = ''
 	caturl.translate_custom = ''
 	xbmc.executebuiltin('Container.Update(%s?%s)'%(sys.argv[0],urllib.urlencode({'mode':'Cat','href':caturl.con(), 'upd':'upd'})))
 
+def Search_in_bd(base_name):
+		import sqlite3
+
+		Kb = xbmc.Keyboard()
+		Kb.setHeading('Поиск')
+		Kb.doModal()
+		if not Kb.isConfirmed(): return '0'
+		search = Kb.getText()
+		search = search.strip()
+
+		search = search.decode('UTF-8').lower().encode('UTF-8')
+
+		sql_ = 'SELECT name, url FROM '+base_name+' WHERE LOWER(name) LIKE "%%%s%%"'
+		if not ' ' in search:
+			sql_ = sql_%search
+		else:
+#			search = search.replace('   ',' ').replace('  ', ' ')
+			search = search.split(' ')
+			sql_ = sql_+' OR LOWER(name) LIKE "%%%s%%"'
+			sql_ = sql_%(search[0]+'%'+search[1], search[1]+'%'+search[0])
+
+		con = sqlite3.connect(addon_data_path+'/'+base_name+'.db')
+		con.create_function("LOWER", 1, lambda s:s.lower())
+		cur = con.cursor()
+		cur.execute(sql_)
+		cur.execute(sql_)
+		search_db = cur.fetchall()
+		cur.close()
+
+		dialog = xbmcgui.Dialog()
+		if not search_db:
+			dialog.ok('','Ничего не найдено')
+			return '0'
+		dlgzn = []
+		for i in search_db:
+			dlgzn.append(i[0])
+
+		dlg = dialog.select('1111111',dlgzn)
+		if dlg == -1:return '0'
+		rez = search_db[dlg][1]
+		if rez[len(rez)-1]=='/':
+			rez = rez[:-1]
+		rez = rez.split('/')
+		rez = rez[len(rez)-1]
+		return rez
 
 def SetFilter(params):
 	caturl = SiteUrlParse(urllib.unquote(params['cathref']))
@@ -391,7 +432,7 @@ def SetFilter(params):
 			if check:
 				title += '  : '+check
 			f.append(title)
-		f.append(clGreen%'<Применить>')
+		f.append(clGreen%'             [B]Применить/Сброс[/B]')
 
 		ret = dialog.select('Фильтр', f)
 		if ret ==-1:
@@ -544,24 +585,11 @@ def SearchDlg(params):
 	Search({'search':search, 'page':'0'})
 
 def Search(params):
-	# def parse(page):
-	# 	page = page['href']
-	# 	page = page.split('?')[1].split('&')
-	# 	nsearch = page[0].split('=')[1].encode('UTF-8')
-	# 	if len(page)==2:
-	# 		npage   = page[1].split('=')[1]
-	# 	else:
-	# 		npage='0'
-	# 	return  nsearch, npage
 
-	print params
 	search = urllib.unquote(params['search'])
-
-
 	url= site_url+'/search.aspx?search='+search+'&page='+params['page']
 
 	Login, Data =Get_url_lg(url)
-
 	Soup = BeautifulSoup(Data)
 
 	Sresult = Soup.find('div', 'b-search-page__results')
@@ -576,6 +604,11 @@ def Search(params):
 		title = a.find('span', 'b-search-page__results-item-title').string
 		img = a.find('span', 'b-search-page__results-item-image').img['src']
 		imgup = img.replace('/13/', '/1/')
+		plot = a.find('span', 'b-search-page__results-item-description')
+		plot = str(plot).replace('<strong>','').replace('</strong>','').replace('<span class="b-search-page__results-item-description">','').replace('</span>','')
+		vote_positive =a.find('span', 'b-search-page__results-item-rating-positive').string
+		vote_negative =a.find('span','b-search-page__results-item-rating-negative').string
+		ctitle =('[S] ' if 'serials' in href else '')+title+'  '+u' (↑%s ↓%s)'%( AA(clGreen,'80')%vote_positive,AA(clRed,'80')%vote_negative)
 
 		ContextMenu=[]
 		if Login:
@@ -587,7 +620,10 @@ def Search(params):
 			cmenu1['mode2']='forlater'
 			ContextMenu = [(clAliceblue%('cxz.to Добавить В Избранное'), 'XBMC.RunPlugin(%s)'%uriencode(cmenu)),
 						   (clAliceblue%('cxz.to Отложить на Будущее'), 'XBMC.RunPlugin(%s)'%uriencode(cmenu1))]
-		AddFolder(title, 'Content', {'href':href, 'title' :title}, ico=img, img=imgup, cmItems=ContextMenu)
+
+		info ={'type':'video','plot':plot,'title':title}
+		property={'fanart_image':imgup}
+		AddFolder(ctitle, 'Content', {'href':href, 'title' :title}, ico=img, img=imgup, info=info, property=property, cmItems=ContextMenu)
 
 	xbmcplugin.endOfDirectory(plugin_handle)
 
@@ -616,13 +652,22 @@ def Content(params):
 
 	Data =Get_url(url, Cookie=True)
 	Soup = BeautifulSoup(Data)
+	isBlocked = Soup.find('div', id='file-block-text')!=None
 
 	AddFolder('Дополнительно','Content_plus',{'href':href})
-	AddItem('_'*30+chr(10)+' ','')
 
-	isBlocked = Soup.find('div', id='file-block-text')!=None
-	if isBlocked:
-		AddFolder(clRed%'Некоторые файлы заблокированы' + ' Поиск на filmix.net', 'FilmixNet_search', {'search':ctitle})
+	try:
+		torrenter = xbmcaddon.Addon(id = 'plugin.video.torrenter')
+	except:
+		torrenter = False
+
+	if torrenter:
+		item = xbmcgui.ListItem('Передать в torrenter',)
+		uri = '%s?%s' % ('plugin://plugin.video.torrenter/', urllib.urlencode({'action':'search','url':ctitle}))
+		xbmcplugin.addDirectoryItem(int(sys.argv[1]), uri, item, isFolder=True)
+
+	AddFolder((clRed%'Некоторые файлы заблокированы ' if isBlocked else '')+ 'Альтернативы', 'External_Search', {'plugin':'all', 'command':'Search','search':ctitle})
+	AddItem('_'*30+chr(10)+' ','')
 
 	li = Soup.findAll('li', 'folder')
 	isFolders=False
@@ -685,32 +730,59 @@ def Content(params):
 	xbmcplugin.endOfDirectory(plugin_handle)
 
 def Content_plus(params):
-	# def GetCasts(params):
-	# 	label = xbmc.getInfoLabel('ListItem.Cast')
-	# 	print label
-	# 	xbmc.executebuiltin('Action(Info)')
+	import kinopoisk
 
 	href=urllib.unquote(params['href'])
 	url=site_url+href
 	Data =Get_url(url, Cookie=True)
 	Soup = BeautifulSoup(Data)
+
+	try:
+		title_origin = Soup.find('div', 'b-tab-item__title-origin').string
+	except:
+		title_origin = Soup.find('div', 'b-tab-item__title-inner').span.string
+
+	title_origin = title_origin.strip().encode('UTF-8')
+
 	info = Soup.find('div', 'item-info')
+	try:
+		year = info.find('a',href = re.compile('.*/year/.*')).span.string
+	except:
+		year = ''
+	try:
+		director= info.find('span', itemprop="director").a.span.string
+	except:
+		director=''
+	kp_id = kinopoisk.Search(title_origin, year, director)
+	if kp_id:
+		AddItem('Кинопоиск: %s (%s), IMDB: %s (%s)'%kinopoisk.GetRating(kp_id))
 
 	director_itemprop= info.findAll('span', itemprop="director")
-	AddItem(clGreen%'Режисёр:')
-	for d_item in director_itemprop:
-		director_href = d_item.find('a')['href']
-		director_name = d_item.find('span', itemprop="name").string
-		ContextMenu = [(clAliceblue%('cxz.to Поиск во всех категориях'), 'Container.Update(%s?%s)'%(sys.argv[0],urllib.urlencode({'mode':'Search','search':director_name, 'page':'0'})))]
-		AddFolder(director_name, 'Cat', {'href':director_href+'/?view=detailed'}, cmItems=ContextMenu)
+	if director_itemprop:
+		AddItem(clGreen%'Режисёр:')
+		for d_item in director_itemprop:
+			director_href = d_item.find('a')['href']
+			director_name = d_item.find('span', itemprop="name").string
+			ContextMenu = [(clAliceblue%('cxz.to Поиск во всех категориях'), 'Container.Update(%s?%s)'%(sys.argv[0],urllib.urlencode({'mode':'Search','search':director_name, 'page':'0'})))]
+			AddFolder(director_name, 'Cat', {'href':director_href+'/?view=detailed'}, cmItems=ContextMenu)
 
 	actor_itemprop= info.findAll('span', itemprop="actor")
-	AddItem(clGreen%'Актёры:')
-	for a_item in actor_itemprop:
-		actor_href = a_item.find('a')['href']
-		actor_name = a_item.find('span', itemprop="name").string
-		ContextMenu = [(clAliceblue%('cxz.to Поиск во всех категориях'), 'Container.Update(%s?%s)'%(sys.argv[0],urllib.urlencode({'mode':'Search','search':actor_name, 'page':'0'})))]
-		AddFolder(actor_name, 'Cat', {'href':actor_href+'/?view=detailed'}, cmItems=ContextMenu)
+	if actor_itemprop:
+		AddItem(clGreen%'Актёры:')
+		for a_item in actor_itemprop:
+			actor_href = a_item.find('a')['href']
+			actor_name = a_item.find('span', itemprop="name").string
+			ContextMenu = [(clAliceblue%('cxz.to Поиск во всех категориях'), 'Container.Update(%s?%s)'%(sys.argv[0],urllib.urlencode({'mode':'Search','search':actor_name, 'page':'0'})))]
+			AddFolder(actor_name, 'Cat', {'href':actor_href+'/?view=detailed'}, cmItems=ContextMenu)
+
+	leading = info.findAll('a', href=re.compile('.*/leader/.*'))
+	if leading:
+		AddItem(clGreen%'Ведущие:')
+		for l in leading:
+			l_href = l['href']
+			l_name = l.span.string
+			ContextMenu = [(clAliceblue%('cxz.to Поиск во всех категориях'), 'Container.Update(%s?%s)'%(sys.argv[0],urllib.urlencode({'mode':'Search','search':l_name, 'page':'0'})))]
+			AddFolder(l_name, 'Cat', {'href':l_href+'/?view=detailed'}, cmItems=ContextMenu)
 
 	xbmcplugin.endOfDirectory(plugin_handle)
 
@@ -810,67 +882,20 @@ def download(params):
 
 
 #--------------------------------
-def FilmixNet_search(params):
-	import filmixnet
-	search = urllib.unquote_plus(params['search'])
-	result = filmixnet.search(search)
-	for res in result:
-		AddFolder(res['title'],'FilmixNet_content',{'href':res['href']},img=res['img'],ico=res['ico'])
-	xbmcplugin.endOfDirectory(plugin_handle)
 
-def FilmixNet_content(params):
-	href = urllib.unquote(params['href'])
-	import filmixnet
-	tp, cont = filmixnet.Content(href)
-	if not tp:return
+def External_Search(params):
+	import ExtSearch.ExtSearch as ExtSearch
 
-	F = open(addon_data_path+'/filmix_playlist', 'w')
-	json.dump(cont, F)
-	F.close()
+	ExtSearch.LoadPlugins()
+	closedir = False
+	for p in ExtSearch.Plugins:
+		rez = p.Command(params)
+		if rez:
+			if 'closedir' in rez: closedir =True
 
-	if len(cont)>1:
-		for ple in range(0,len(cont)):
-			AddFolder('Плеер '+str(ple+1),'FilmixNet_content2', {'le':ple})
-		xbmcplugin.endOfDirectory(plugin_handle)
-	else:
-		FilmixNet_content2({'le':0})
+	if closedir: xbmcplugin.endOfDirectory(plugin_handle)
 
-def FilmixNet_content2(params): #Сезон
-	F = open(addon_data_path+'/filmix_playlist', 'r')
-	cont = json.load(F)
-	F.close()
+def SendToTorrenter(params):
 
-	if type(cont[int(params['le'])])==dict:
-		for i in cont[int(params['le'])]['playlist']:
-			AddFolder(i['comment'],'FilmixNet_content3', {'le':params['le'], 'le2':i['comment'].encode('UTF-8')})
-		xbmcplugin.endOfDirectory(plugin_handle)
-	else:
-		FilmixNet_play({'title':' ', 'url':cont[int(params['le'])]})
-
-def FilmixNet_content3(params): #Серия
-	le = urllib.unquote(params['le'])
-	le2 = urllib.unquote(params['le2'])
-	F = open(addon_data_path+'/filmix_playlist', 'r')
-	cont = json.load(F)
-	F.close()
-
-	for i in cont[int(params['le'])]['playlist']:
-		if i['comment'].encode('UTF-8')==le2:
-			for j in i['playlist']:
-				AddItem(j['comment'],'FilmixNet_play', {'title':j['comment'].encode('UTF-8'), 'url':j['file']})
-			xbmcplugin.endOfDirectory(plugin_handle)
-
-def FilmixNet_play(params):
-	title = urllib.unquote_plus(params['title'])
-	url = urllib.unquote(params['url'])
-	k = re.compile('\[(.+?)\]').findall(url)
-	if k:
-		dialog = xbmcgui.Dialog()
-		dialog_items =k[0].split(',')
-		dlg= dialog.select('Качество Изображения', dialog_items)
-		if dlg==-1:return
-		url = url.replace('['+k[0]+']', dialog_items[dlg])
-
-	item = xbmcgui.ListItem(title, iconImage = '', thumbnailImage = '')
-	item.setInfo(type="Video", infoLabels={"Title":title})
-	xbmc.Player().play(url, item)
+	xbmc.executebuiltin('Container.Update(%s?%s)'%(sys.argv[0],urllib.urlencode({'action':'search'})))
+	#xbmc.executebuiltin("RunScript(plugin.video.torrenter, "+str(plugin_handle)+", action=search)")
