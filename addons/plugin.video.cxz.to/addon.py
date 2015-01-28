@@ -354,13 +354,17 @@ def SetGroup(params):
 		caturl.group=genres[g[ret]]
 
 	elif var =='по режиссёрам':
-		rez = Search_in_bd('directors')
+		if not CheckDB():
+			return
+		rez = Search_in_bd('films_directors')
 		if rez == '0':
 			return
 		caturl.group ='director/'+rez
 
 	elif var =='по актёрам':
-		rez = Search_in_bd('casts')
+		if not CheckDB():
+			return
+		rez = Search_in_bd('films_casts')
 		if rez == '0':
 			return
 		caturl.group ='cast/'+rez
@@ -369,6 +373,31 @@ def SetGroup(params):
 	caturl.language_custom = ''
 	caturl.translate_custom = ''
 	xbmc.executebuiltin('Container.Update(%s?%s)'%(sys.argv[0],urllib.urlencode({'mode':'Cat','href':caturl.con(), 'upd':'upd'})))
+
+def CheckDB():
+	import zipfile
+	if (os.path.exists(addon_data_path+'/films_directors.db'))and(os.path.exists(addon_data_path+'/films_casts.db')):
+		return True
+	else:
+		dialog = xbmcgui.Dialog()
+		if dialog.yesno('Установить Базу:','Для поиска по Персонам Необходимо загрузить дополнительную Базу', '        Загрузить Сейчас?'):
+			url = 'http://mnn-xbmc-repo.googlecode.com/svn/trunk/addons/plugin.video.cxz.to.db/'
+			db = []
+			try:
+				dir = urllib.urlopen(url).read()
+				Soup = BeautifulSoup(dir)
+				li = Soup.findAll('li')
+				for l in li:
+					href = l.a['href']
+					if '.zip' in href:
+						urllib.urlretrieve(url+'/'+href, addon_data_path+'/'+href)
+						zip_handler = zipfile.ZipFile(addon_data_path+'/'+href, 'r')
+						zip_handler.extractall(addon_data_path)
+				return True
+			except:
+				xbmcMessage('Не удалось установить Базу, попробуйте позже')
+				return False
+	return False
 
 def Search_in_bd(base_name):
 		import sqlite3
@@ -382,7 +411,7 @@ def Search_in_bd(base_name):
 
 		search = search.decode('UTF-8').lower().encode('UTF-8')
 
-		sql_ = 'SELECT name, url FROM '+base_name+' WHERE LOWER(name) LIKE "%%%s%%"'
+		sql_ = 'SELECT name, url FROM data WHERE LOWER(name) LIKE "%%%s%%"'
 		if not ' ' in search:
 			sql_ = sql_%search
 		else:

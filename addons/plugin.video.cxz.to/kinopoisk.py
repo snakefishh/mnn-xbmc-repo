@@ -23,7 +23,6 @@ def Search(title, year='', director=''):
 #	if director:
 #		url =url+'&m_act%5Bcast%5D='+urllib.quote_plus(director.encode('cp1251'))
 
-	print url
 	opener = urllib2.build_opener(NoRedirect())
 	urllib2.install_opener(opener)
 

@@ -32,7 +32,6 @@ class Treetv(Plugin):
         if items:
             AddItem(clGreen%('----Найдено на '+self.Name+'----'))
             for item in items:
-                print item
                 img = item.find('div', 'preview').find('img')['src']
 
                 item_content = item.find('div', 'item_content')
