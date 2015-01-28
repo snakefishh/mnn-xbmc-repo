@@ -14,9 +14,12 @@ class c911to (Plugin):
 
 	def Command(self, args):
 		if (args['plugin'] == self.__class__.__name__)or(args['plugin'] =='all'):
-			run = getattr(self, args['command'])
-			result = run(args)
-			return result
+			try:
+				run = getattr(self, args['command'])
+				result = run(args)
+				return result
+			except:
+				return False
 		else:
 			return False
 
@@ -43,4 +46,3 @@ class c911to (Plugin):
 					title = info.find('a').string
 					AddFolder(title+' ('+dt+')','External_Search',{'plugin':self.__class__.__name__,'command':'', 'href':href}, img=img,ico=img)
 				return 'closedir'
-

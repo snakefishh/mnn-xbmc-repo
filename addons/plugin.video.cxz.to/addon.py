@@ -894,8 +894,3 @@ def External_Search(params):
 			if 'closedir' in rez: closedir =True
 
 	if closedir: xbmcplugin.endOfDirectory(plugin_handle)
-
-def SendToTorrenter(params):
-
-	xbmc.executebuiltin('Container.Update(%s?%s)'%(sys.argv[0],urllib.urlencode({'action':'search'})))
-	#xbmc.executebuiltin("RunScript(plugin.video.torrenter, "+str(plugin_handle)+", action=search)")

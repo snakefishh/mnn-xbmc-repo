@@ -14,9 +14,12 @@ class Filmixnet(Plugin):
 
     def Command(self, args):
         if (args['plugin'] == self.__class__.__name__)or(args['plugin'] =='all'):
-            run = getattr(self, args['command'])
-            result = run(args)
-            return result
+            try:
+                run = getattr(self, args['command'])
+                result = run(args)
+                return result
+            except:
+                return False
         else:
             return False
 
