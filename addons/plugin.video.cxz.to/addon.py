@@ -376,29 +376,53 @@ def SetGroup(params):
 	xbmc.executebuiltin('Container.Update(%s?%s)'%(sys.argv[0],urllib.urlencode({'mode':'Cat','href':caturl.con(), 'upd':'upd'})))
 
 def CheckDB():
+	class Progress(object):
+		total = 0
+		cur = 0
+		title =''
+		pDialog = xbmcgui.DialogProgress()
+		def __init__(self):
+			self.pDialog.create('Загрузка:')
+			self.pDialog.update(0, self.title)
+		def update(self, count, blockSize, totalSize):
+			percent = int((self.cur-1)*(100/self.total)+(count*blockSize*100/totalSize)/self.total)
+			self.pDialog.update(percent, self.title)
+		def __del__(self):
+			self.pDialog.close()
 	import zipfile
+
 	if (os.path.exists(addon_data_path+'/films_directors.db'))and(os.path.exists(addon_data_path+'/films_casts.db')):
 		return True
 	else:
 		dialog = xbmcgui.Dialog()
-		if dialog.yesno('Установить Базу:','Для поиска по Персонам Необходимо загрузить дополнительную Базу', '        Загрузить Сейчас?'):
+		if dialog.yesno('Установить Базу:','Для поиска по Персонам', 'Необходимо загрузить дополнительную Базу', 'Загрузить Сейчас?'):
 			url = 'http://mnn-xbmc-repo.googlecode.com/svn/trunk/addons/plugin.video.cxz.to.db/'
-			db = []
+			Progr = Progress()
 			try:
 				dir = urllib.urlopen(url).read()
 				Soup = BeautifulSoup(dir)
 				li = Soup.findAll('li')
+				db = []
 				for l in li:
 					href = l.a['href']
 					if '.zip' in href:
-						urllib.urlretrieve(url+'/'+href, addon_data_path+'/'+href)
-						zip_handler = zipfile.ZipFile(addon_data_path+'/'+href, 'r')
-						zip_handler.extractall(addon_data_path)
+						db.append(href)
+				Progr.total = len(db)
+				Progr.cur = 0
+				for name in db:
+					Progr.cur+=1
+					Progr.title=name
+					urllib.urlretrieve(url+'/'+name, addon_data_path+'/'+name,reporthook=Progr.update)
+					zip_handler = zipfile.ZipFile(addon_data_path+'/'+name, 'r')
+					zip_handler.extractall(addon_data_path)
+				del(Progr)
 				return True
 			except:
-				xbmcMessage('Не удалось установить Базу, попробуйте позже')
+				xbmcMessage('Не удалось установить Базу, попробуйте позже',5000)
+				del(Progr)
 				return False
-	return False
+		else:
+			return False
 
 def Search_in_bd(base_name):
 		import sqlite3
@@ -696,7 +720,7 @@ def Content(params):
 		uri = '%s?%s' % ('plugin://plugin.video.torrenter/', urllib.urlencode({'action':'search','url':ctitle}))
 		xbmcplugin.addDirectoryItem(int(sys.argv[1]), uri, item, isFolder=True)
 
-	AddFolder((clRed%'Некоторые файлы заблокированы ' if isBlocked else '')+ 'Альтернативы', 'External_Search', {'plugin':'all', 'command':'Search','search':ctitle})
+	AddFolder((clRed%'Некоторые файлы заблокированы ' if isBlocked else '')+ 'Альтернативы', 'External_Search', {'plugin':'all', 'command':'Search','search':ctitle.split('/')[0]})
 	AddItem('_'*30+chr(10)+' ','')
 
 	li = Soup.findAll('li', 'folder')

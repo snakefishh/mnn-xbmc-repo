@@ -24,11 +24,27 @@ class c911to (Plugin):
 			return False
 
 	def Search(self,args):
-		search = urllib.unquote_plus(args['search'])
+		search = urllib.unquote(args['search'])
+		search = search.strip()
 
 		url = 'http://911.to/ajax/search_movie'
-		Data = Get_url(url,Post={'term':search},headers={'X-Requested-With':'XMLHttpRequest','User-Agent':User_Agent})
-		if Data:
+		headers ={'Accept':'*/*',
+			      'Accept-Encoding':'gzip, deflate',
+				  'Accept-Language':'ru-RU,ru;q=0.8,en-US;q=0.5,en;q=0.3',
+				  'Cache-Control':'no-cache',
+				 # 'Connection':'keep-alive',
+				  #'Content-Length':str(30+5),
+				  'Content-Type':'application/x-www-form-urlencoded; charset=UTF-8',
+				  #'Host':'911.to',
+				  'Pragma':'no-cache',
+				  'Referer':'http://911.to/',
+				  'User-Agent':'Mozilla/5.0 (Windows NT 6.3; WOW64; rv:35.0) Gecko/20100101 Firefox/35.0',
+				  'X-Requested-With':'XMLHttpRequest',
+				  }
+
+		Data = Get_url(url,Post={'term':search},headers=headers)
+
+		if Data and('ничего не найдено' not in Data):
 			Soup = BeautifulSoup(Data)
 			items = Soup.findAll('div', 'box clearfix')
 			if items:
