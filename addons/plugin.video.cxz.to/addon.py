@@ -279,7 +279,8 @@ def CreateCatItem(pop, mSerials=False):
 		cmenu1=cmenu.copy()
 		cmenu1['mode2']='forlater'
 		ContextMenu = [(clAliceblue%('cxz.to Добавить В Избранное'), 'XBMC.RunPlugin(%s)'%uriencode(cmenu)),
-					   (clAliceblue%('cxz.to Отложить на Будущее'), 'XBMC.RunPlugin(%s)'%uriencode(cmenu1))]
+					   (clAliceblue%('cxz.to Отложить на Будущее'),  'XBMC.RunPlugin(%s)'%uriencode(cmenu1)),
+					   (clAliceblue%('cxz.to Информация'),            'XBMC.Action(Info)')]
 
 	info ={'type':'video','plot':plot,'title':title,'year':year,'cast':cast}
 	property={'fanart_image':imgup}
