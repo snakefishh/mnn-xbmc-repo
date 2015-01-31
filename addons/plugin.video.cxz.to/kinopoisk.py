@@ -16,12 +16,10 @@ class NoRedirect(urllib2.HTTPRedirectHandler):
 
 def Search(title, year='', director=''):
 	url = 'http://www.kinopoisk.ru/index.php?level=7&from=forma&result=adv&m_act%5Bfrom%5D=forma&m_act%5Bwhat%5D=content&m_act%5Bfind%5D='+ urllib.quote_plus(title)
-#   http://www.kinopoisk.ru/index.php?level=7&from=forma&result=adv&m_act%5Bfrom%5D=forma&m_act%5Bwhat%5D=content&m_act%5Bfind%5D=The+Judge&m_act%5Byear%5D=2014&m_act%5Bcast%5D=%C4%FD%E2%E8%E4+%C4%EE%E1%EA%E8%ED
-
 	if year:
 		url =url+'&m_act%5Byear%5D='+urllib.quote_plus(year)
 #	if director:
-#		url =url+'&m_act%5Bcast%5D='+urllib.quote_plus(director.encode('cp1251'))
+#		url =url+'&m_act%5Bcast%5D='+urllib.quote_plus(director)
 
 	opener = urllib2.build_opener(NoRedirect())
 	urllib2.install_opener(opener)

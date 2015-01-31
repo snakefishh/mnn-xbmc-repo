@@ -17,6 +17,7 @@ if (sys.platform == 'win32') or (sys.platform == 'win64'):
 plugin_handle	= int(sys.argv[1])
 xbmcplugin.setContent(plugin_handle, 'movies')
 site_url='http://cxz.to'
+site_url='http://cxz.to'
 
 class SiteUrlParse:
 	cat=''
@@ -280,7 +281,7 @@ def CreateCatItem(pop, mSerials=False):
 		cmenu1['mode2']='forlater'
 		ContextMenu = [(clAliceblue%('cxz.to Добавить В Избранное'), 'XBMC.RunPlugin(%s)'%uriencode(cmenu)),
 					   (clAliceblue%('cxz.to Отложить на Будущее'),  'XBMC.RunPlugin(%s)'%uriencode(cmenu1)),
-					   (clAliceblue%('cxz.to Информация'),            'XBMC.Action(Info)')]
+					   (clAliceblue%('cxz.to Информация'),           'XBMC.Action(Info)')]
 
 	info ={'type':'video','plot':plot,'title':title,'year':year,'cast':cast}
 	property={'fanart_image':imgup}
@@ -295,6 +296,7 @@ def SetSort(params):
 	if ret ==-1:
 		return
 	caturl.url_qs['sort']=s[1][ret]
+	if 'page' in caturl.url_qs:del caturl.url_qs['page']
 	xbmc.executebuiltin('Container.Update(%s?%s)'%(sys.argv[0],urllib.urlencode({'mode':'Cat','href':caturl.con(), 'upd':'upd'})))
 
 def SetGroup(params):
@@ -326,7 +328,7 @@ def SetGroup(params):
 		if ret ==-1:
 			return
 		y1=[]
-		for i in range(int(y10[ret][0:4]), int(y10[ret][-4:])+1):
+		for i in reversed(range(int(y10[ret][0:4]), int(y10[ret][-4:])+1)):
 			y1.append(str(i))
 		ret = dialog.select('По Годам', y1)
 		if ret ==-1:
@@ -373,6 +375,7 @@ def SetGroup(params):
 	caturl.fl=[]
 	caturl.language_custom = ''
 	caturl.translate_custom = ''
+	if 'page' in caturl.url_qs:del caturl.url_qs['page']
 	xbmc.executebuiltin('Container.Update(%s?%s)'%(sys.argv[0],urllib.urlencode({'mode':'Cat','href':caturl.con(), 'upd':'upd'})))
 
 def CheckDB():
@@ -486,7 +489,7 @@ def SetFilter(params):
 			if check:
 				title += '  : '+check
 			f.append(title)
-		f.append(clGreen%'             [B]Применить/Сброс[/B]')
+		f.append(clGreen%'[B]Применить/Сброс[/B]')
 
 		ret = dialog.select('Фильтр', f)
 		if ret ==-1:
@@ -551,6 +554,7 @@ def SetFilter(params):
 	caturl.language_custom = l_c
 	caturl.translate_custom = t_c
 	caturl.group=''
+	if 'page' in caturl.url_qs:del caturl.url_qs['page']
 
 	xbmc.executebuiltin('Container.Update(%s?%s)'%(sys.argv[0],urllib.urlencode({'mode':'Cat','href':caturl.con(), 'upd':'upd'})))
 
@@ -687,19 +691,41 @@ def Content(params):
 	href=urllib.unquote(params['href'])
 
 	url=site_url+href+'?ajax'
-
 	query={}
-#	query['download']='1'
-#	query['view']='1'
-#	query['view_embed']='0'
-#	query['blocked']='0'
-#	query['folder_quality']='null'
-#	query['folder_lang']='null'
-#	query['folder_translate']='null'
+
+	fl_sh = False
+	try:
+		season=params['season']
+	except:
+		season='0'
 	try:
 		query['folder']=params['rel']
+
 	except:
 		query['folder']='0'
+		fl_sh = True
+		SData =Get_url(site_url+href, Cookie=True)
+		AddFolder('Дополнительно','Content_plus',{'href':href},property={'cxztodata':SData})
+
+		try:
+			torrenter = xbmcaddon.Addon(id = 'plugin.video.torrenter')
+		except:
+			torrenter = False
+		if torrenter:
+			item = xbmcgui.ListItem('Передать в torrenter',)
+			uri = '%s?%s' % ('plugin://plugin.video.torrenter/', urllib.urlencode({'action':'search','url':ctitle}))
+			xbmcplugin.addDirectoryItem(int(sys.argv[1]), uri, item, isFolder=True)
+
+
+		#####
+		if '/serials/' in href or '/tvshow/' in href or '/cartoonserials/' in href:
+			Soup = BeautifulSoup(SData)
+			results=Soup.find('div','b-tab-item__title-origin')
+			if not results:
+				results=Soup.find('div','b-tab-item__title-inner')
+				results=results.find('span')
+			if results:
+				ctitle=results.string
 
 	for qr in query:
 		url+='&'+qr+'='+query[qr]
@@ -708,20 +734,12 @@ def Content(params):
 	Soup = BeautifulSoup(Data)
 	isBlocked = Soup.find('div', id='file-block-text')!=None
 
-	AddFolder('Дополнительно','Content_plus',{'href':href})
-
-	try:
-		torrenter = xbmcaddon.Addon(id = 'plugin.video.torrenter')
-	except:
-		torrenter = False
-
-	if torrenter:
-		item = xbmcgui.ListItem('Передать в torrenter',)
-		uri = '%s?%s' % ('plugin://plugin.video.torrenter/', urllib.urlencode({'action':'search','url':ctitle}))
-		xbmcplugin.addDirectoryItem(int(sys.argv[1]), uri, item, isFolder=True)
-
-	AddFolder((clRed%'Некоторые файлы заблокированы ' if isBlocked else '')+ 'Альтернативы', 'External_Search', {'plugin':'all', 'command':'Search','search':ctitle.split('/')[0]})
-	AddItem('_'*30+chr(10)+' ','')
+	if fl_sh:
+		try:
+			AddFolder((clRed%'Некоторые файлы заблокированы ' if isBlocked else '')+ 'Альтернативы', 'External_Search', {'plugin':'all', 'command':'Search','search':ctitle.split('/')[0]})
+		except:
+			AddFolder((clRed%'Некоторые файлы заблокированы ' if isBlocked else '')+ 'Альтернативы', 'External_Search', {'plugin':'all', 'command':'Search','search':ctitle.split('/')[0].encode('UTF-8')})
+		AddItem('_'*30+chr(10)+' ','')
 
 	li = Soup.findAll('li', 'folder')
 	isFolders=False
@@ -736,6 +754,11 @@ def Content(params):
 		title= a.string
 		if title==None:
 			title = l.find('a', 'title').b.string
+
+		results=re.compile('(\d+) сезон', re.IGNORECASE).findall(title.encode('utf-8'))
+		if results:
+			season=str(int(results[0]))
+
 		lang = a['class']
 		lang = re.compile('\sm\-(\w+)\s').findall(lang)
 		if lang:
@@ -778,8 +801,17 @@ def Content(params):
 			cmenu={'mode'  :'download', 'href':href_dl, 'title':title}
 			ContextMenu = [(clAliceblue%('cxz.to Скачать файл'), 'XBMC.RunPlugin(%s)'%uriencode(cmenu))]
 			info={'type':'Video','title':ctitle}
+			if '/serials/' in href or '/tvshow/' in href or '/cartoonserials/' in href:
+				results=filename2match(title)
+				if results:
+					info['tvshowtitle']=ctitle
+					info['title']=title
+					if season=='0':
+						info['season']=results['season']
+					else:
+						info['season']=season
+					info['episode']=results['episode']
 			prop={'IsPlayable':'true'}
-
 			AddItem(('   ' if isFolders else '')+('   ' if isSubFolder else '')+title+' '+size,'Play',{'href':href, 'href_dl':href_dl}, info=info, property=prop, cmItems=ContextMenu)
 	xbmcplugin.endOfDirectory(plugin_handle)
 
@@ -788,7 +820,8 @@ def Content_plus(params):
 
 	href=urllib.unquote(params['href'])
 	url=site_url+href
-	Data =Get_url(url, Cookie=True)
+	#Data =Get_url(url, Cookie=True)
+	Data = xbmc.getInfoLabel("ListItem.Property(cxztodata)")
 	Soup = BeautifulSoup(Data)
 
 	try:
@@ -934,7 +967,17 @@ def download(params):
 	dl = downloader.SimpleDownloader()
 	dl.download(name.decode('UTF-8'), {'url': url, 'download_path':dir})
 
-
+def filename2match(filename):
+	results={'label':filename}
+	urls=['(.+)s(\d+)e(\d+)','(.+)s(\d+)\.e(\d+)', '(.+) [\[|\(](\d+)[x|-](\d+)[\]|\)]', '(.+) (\d+)[x|-](\d+)'] #same in service
+	for file in urls:
+		match=re.compile(file, re.I | re.IGNORECASE).findall(filename)
+		#print str(results)
+		if match:
+			results['showtitle'], results['season'], results['episode']=match[0]
+			results['showtitle']=results['showtitle'].replace('.',' ').replace('_',' ').strip().replace('The Daily Show','The Daily Show With Jon Stewart')
+			#print('[filename2match] '+str(results))
+			return results
 #--------------------------------
 
 def External_Search(params):
