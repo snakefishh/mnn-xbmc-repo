@@ -568,6 +568,8 @@ def Favourites(params):
 	xbmcplugin.endOfDirectory(plugin_handle)
 
 def Favourites2(params):
+	categorize = addon.getSetting('categorize')
+	print categorize
 	url =site_url+'/myfavourites.aspx?page='+params['page']
 	Login, Data =Get_url_lg(url)
 	if not Login:return
@@ -581,12 +583,16 @@ def Favourites2(params):
 		section    =rel[0].split(':')[1]
 		subsection =rel[1].split(':')[1]
 		url ={'section':section, 'subsection':subsection, 'page':params['page'], 'curpage':'0'}
-		AddFolder(title.encode('UTF-8'), 'GetFavourites', url)
+		if categorize =='true':
+			AddFolder(title.encode('UTF-8'), 'GetFavourites', url)
+		else:
+			GetFavourites(url)
 	xbmcplugin.endOfDirectory(plugin_handle)
 
 def GetFavourites(params):
 	curpage= params['curpage']
 	page = params['page']
+	categorize = addon.getSetting('categorize')
 	url = site_url+'/myfavourites.aspx?ajax&'
 	ajax={
 		'section'    :params['section'],
@@ -600,6 +606,7 @@ def GetFavourites(params):
 	url += urllib.urlencode(ajax)
 	js = Get_url(url, JSON=True, Cookie=True)
 	maxpages = js['maxpages']
+	islast =js['islast']
 	Data= js['content']
 	Soup = BeautifulSoup(Data)
 	tega = Soup.findAll('a')
@@ -623,7 +630,7 @@ def GetFavourites(params):
 			ContextMenu = [(clAliceblue%('cxz.to Удалить Из Категории'), 'XBMC.RunPlugin(%s)'%uriencode(cmenu))]
 		AddFolder(title.encode('UTF-8'), 'Content',{'href':href, 'title':title.encode('UTF-8')}, img=imgup, ico=img, cmItems=ContextMenu)
 
-	if (int(curpage)<int(maxpages)-1):
+	if islast=='false': #(int(curpage)<int(maxpages)-1):
 		url ={'section':params['section'], 'subsection':params['subsection'], 'page':page,
 			  'curpage':str(int(curpage)+1),'upd':'upd'}
 		AddFolder(clGreen%('Страница '+str(int(curpage)+2)+' >'), 'GetFavourites', url)
@@ -632,7 +639,8 @@ def GetFavourites(params):
 		upd = params['upd']=='upd'
 	except:
 		upd=False
-	xbmcplugin.endOfDirectory(plugin_handle, updateListing=upd)
+	if categorize == 'true':
+		xbmcplugin.endOfDirectory(plugin_handle, updateListing=upd)
 
 def SearchDlg(params):
 	Kb = xbmc.Keyboard()
@@ -705,7 +713,8 @@ def Content(params):
 		query['folder']='0'
 		fl_sh = True
 		SData =Get_url(site_url+href, Cookie=True)
-		AddFolder('Дополнительно','Content_plus',{'href':href},property={'cxztodata':SData})
+		AddFolder('Дополнительно','Content_plus', property={'cxztodata':SData})
+		AddFolder('Похожие материалы','Similar', property={'cxztodata':SData})
 
 		try:
 			torrenter = xbmcaddon.Addon(id = 'plugin.video.torrenter')
@@ -815,11 +824,16 @@ def Content(params):
 			AddItem(('   ' if isFolders else '')+('   ' if isSubFolder else '')+title+' '+size,'Play',{'href':href, 'href_dl':href_dl}, info=info, property=prop, cmItems=ContextMenu)
 	xbmcplugin.endOfDirectory(plugin_handle)
 
+	if fl_sh:
+		win = xbmcgui.Window(xbmcgui.getCurrentWindowId())
+		ctrl= str(win.getFocusId())
+		xbmc.executebuiltin("SetFocus("+ctrl+",5)")
+
 def Content_plus(params):
 	import kinopoisk
 
-	href=urllib.unquote(params['href'])
-	url=site_url+href
+	#href=urllib.unquote(params['href'])
+	#url=site_url+href
 	#Data =Get_url(url, Cookie=True)
 	Data = xbmc.getInfoLabel("ListItem.Property(cxztodata)")
 	Soup = BeautifulSoup(Data)
@@ -837,7 +851,7 @@ def Content_plus(params):
 	except:
 		year = ''
 	try:
-		director= info.find('span', itemprop="director").a.span.string
+		director= info.find('span', itemprop="director").a.span.string.encode('UTF-8')
 	except:
 		director=''
 	kp_id = kinopoisk.Search(title_origin, year, director)
@@ -871,6 +885,30 @@ def Content_plus(params):
 			ContextMenu = [(clAliceblue%('cxz.to Поиск во всех категориях'), 'Container.Update(%s?%s)'%(sys.argv[0],urllib.urlencode({'mode':'Search','search':l_name, 'page':'0'})))]
 			AddFolder(l_name, 'Cat', {'href':l_href+'/?view=detailed'}, cmItems=ContextMenu)
 
+	xbmcplugin.endOfDirectory(plugin_handle)
+
+def Similar(params):
+	Data = xbmc.getInfoLabel("ListItem.Property(cxztodata)")
+	Soup = BeautifulSoup(Data)
+	sim = Soup.find('div', 'b-similar')
+	if not sim:
+		return
+	links = sim.findAll('a', 'b-poster-new__link')
+	if not links:
+		return
+	for link in links:
+		href = link['href']
+		img = link.find('span', 'b-poster-new__image-poster')['style']
+		#="background-image: url('http://s3.dotua.org/fsua_items/cover/00/02/82/9/00028237.jpg'))
+		tmp = re.compile("(http:\/\/[^']+)").findall(img)
+		if tmp:
+			img = tmp[0]
+			imgup = img.replace('/9/', '/1/')
+		else:
+			img = ''
+			imgup = ''
+		title = link.find('span', 'm-poster-new__full_title').string.encode('UTF-8')
+		AddFolder(title, 'Content', {'href':href, 'title' :title}, ico=img, img=imgup)
 	xbmcplugin.endOfDirectory(plugin_handle)
 
 

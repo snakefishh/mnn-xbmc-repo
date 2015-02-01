@@ -18,8 +18,8 @@ def Search(title, year='', director=''):
 	url = 'http://www.kinopoisk.ru/index.php?level=7&from=forma&result=adv&m_act%5Bfrom%5D=forma&m_act%5Bwhat%5D=content&m_act%5Bfind%5D='+ urllib.quote_plus(title)
 	if year:
 		url =url+'&m_act%5Byear%5D='+urllib.quote_plus(year)
-#	if director:
-#		url =url+'&m_act%5Bcast%5D='+urllib.quote_plus(director)
+	#if director:
+	#	url =url+'&m_act%5Bcast%5D='+urllib.quote_plus(director)
 
 	opener = urllib2.build_opener(NoRedirect())
 	urllib2.install_opener(opener)
