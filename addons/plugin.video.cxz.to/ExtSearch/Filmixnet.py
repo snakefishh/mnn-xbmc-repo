@@ -31,7 +31,7 @@ class Filmixnet(Plugin):
             AddItem(clGreen%('----Найдено на '+self.Name+'----'))
             for res in result:
                 AddFolder(res['title'],'External_Search',{'plugin':self.__class__.__name__,'command':'FilmixNet_content', 'href':res['href']}, img=res['img'],ico=res['ico'])
-            return 'closedir'
+            return
         else:
             return False
 
@@ -47,10 +47,9 @@ class Filmixnet(Plugin):
         if len(cont)>1:
             for ple in range(0,len(cont)):
                 AddFolder('Плеер '+str(ple+1),'External_Search',{'plugin':self.__class__.__name__,'command':'FilmixNet_content2', 'le':ple})
-            return 'closedir'
+            return True
         else:
             self.FilmixNet_content2({'le':0})
-
 
     def FilmixNet_content2(self, args): #Сезон
         F = open(addon_data_path+'/filmix_playlist', 'r')
@@ -60,10 +59,9 @@ class Filmixnet(Plugin):
         if type(cont[int(args['le'])])==dict:
             for i in cont[int(args['le'])]['playlist']:
                 AddFolder(i['comment'],'External_Search',{'plugin':self.__class__.__name__,'command':'FilmixNet_content3', 'le':args['le'], 'le2':i['comment'].encode('UTF-8')})
-            return 'closedir'
+            return True
         else:
             self.FilmixNet_play({'title':' ', 'url':cont[int(args['le'])]})
-
 
     def FilmixNet_content3(self, args): #Серия
         le = urllib.unquote(args['le'])
@@ -76,7 +74,7 @@ class Filmixnet(Plugin):
             if i['comment'].encode('UTF-8')==le2:
                 for j in i['playlist']:
                     AddItem(j['comment'],'External_Search',{'plugin':self.__class__.__name__,'command':'FilmixNet_play', 'title':j['comment'].encode('UTF-8'), 'url':j['file']})
-                return 'closedir'
+                return True
 
     def FilmixNet_play(self, args):
         title = urllib.unquote_plus(args['title'])
@@ -92,7 +90,6 @@ class Filmixnet(Plugin):
         item = xbmcgui.ListItem(title, iconImage = '', thumbnailImage = '')
         item.setInfo(type="Video", infoLabels={"Title":title})
         xbmc.Player().play(url, item)
-
 
     def Content(self,href):
         Data = Get_url(href)
@@ -116,8 +113,6 @@ class Filmixnet(Plugin):
                 playlst.append(js)
         if playlst:return 'pl', playlst
         return '', ''
-
-
 
     def search_(self, s):
         headers={'Accept': '*/*',

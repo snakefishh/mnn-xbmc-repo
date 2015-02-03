@@ -61,4 +61,4 @@ class c911to (Plugin):
 					href = info.find('a')['href']
 					title = info.find('a').string
 					AddFolder(title+' ('+dt+')','External_Search',{'plugin':self.__class__.__name__,'command':'', 'href':href}, img=img,ico=img)
-				return 'closedir'
+				return True

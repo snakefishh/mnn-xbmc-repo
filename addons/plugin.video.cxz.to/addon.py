@@ -280,8 +280,7 @@ def CreateCatItem(pop, mSerials=False):
 		cmenu1=cmenu.copy()
 		cmenu1['mode2']='forlater'
 		ContextMenu = [(clAliceblue%('cxz.to Добавить В Избранное'), 'XBMC.RunPlugin(%s)'%uriencode(cmenu)),
-					   (clAliceblue%('cxz.to Отложить на Будущее'),  'XBMC.RunPlugin(%s)'%uriencode(cmenu1)),
-					   (clAliceblue%('cxz.to Информация'),           'XBMC.Action(Info)')]
+					   (clAliceblue%('cxz.to Отложить на Будущее'),  'XBMC.RunPlugin(%s)'%uriencode(cmenu1))]#, (clAliceblue%('cxz.to Информация'),           'XBMC.Action(Info)')]
 
 	info ={'type':'video','plot':plot,'title':title,'year':year,'cast':cast}
 	property={'fanart_image':imgup}
@@ -660,11 +659,12 @@ def Search(params):
 
 	Sresult = Soup.find('div', 'b-search-page__results')
 	if Sresult == None:
-		xbmcMessage('Ничего не найдено', 7000)
+		dialog = xbmcgui.Dialog()
+		if dialog.yesno('Поиск:', 'На cxz.to ничего не найдено. Искать на других сайтах?'):
+			External_Search({'plugin':'all', 'command':'Search','search':search})
 		return
 
 	Sresult = Soup.findAll('a', 'b-search-page__results-item')
-
 	for a in Sresult:
 		href = a['href']
 		title = a.find('span', 'b-search-page__results-item-title').string
@@ -915,22 +915,19 @@ def Similar(params):
 def ADFav(params):
 	href = urllib.unquote(params['href'])
 	mode = params['mode2']
+
 	if params['mode3']=='add':
-		url = site_url+href
-		Login, Data =Get_url_lg(url)
-		if not Login: return
-		Soup=BeautifulSoup(Data)
-
-		add_to = Soup.find('div', 'b-tab-item__add-to')
-		infav   =add_to.findAll(True, style='display: none;')
-
-		f = False
-		for i in infav:
-			future    = i.find('span', 'b-tab-item__add-to-future-inner')
-			favourite = i.find('span', 'b-tab-item__add-to-favourite-inner')
-			if (future)and(mode=='forlater'): f=True
-			if (favourite)and(mode=='favorites'): f = True
-		if f:
+		url = 'http://cxz.to/item/user_votes/'
+		s = href.split('/')[-1]
+		s = s.split('-')[0]
+		url = url+s
+		headders = {'Accept':'*/*',
+					'Accept-Encoding':'gzip, deflate',
+					'Accept-Language':'ru-RU,ru;q=0.8,en-US;q=0.5,en;q=0.3',
+					'X-Requested-With':'XMLHttpRequest'
+					}
+		json = Get_url(url,JSON=True,headers=headders,Cookie=True)
+		if (json['item_status']['favorites']==1) or (json['item_status']['forlater']==1):
 			xbmcMessage('Материал Уже Есть В Избранном',7000)
 			return
 
@@ -938,9 +935,9 @@ def ADFav(params):
 	url = site_url+'/addto/%s/%s?json'%(mode, id)
 	Data =Get_url(url, JSON=True, Cookie=True)
 	xbmcMessage(Data['ok'].encode('UTF-8'), 7000)
-	if params['mode3']=='del':
-		xbmc.sleep(1000)
-		xbmc.executebuiltin('Container.Refresh')
+#	if params['mode3']=='del':
+#		xbmc.sleep(2000)
+#		xbmc.executebuiltin('Container.Refresh')
 
 def Play(params):
 	link    = site_url+urllib.unquote(params['href'])
@@ -1026,6 +1023,6 @@ def External_Search(params):
 	for p in ExtSearch.Plugins:
 		rez = p.Command(params)
 		if rez:
-			if 'closedir' in rez: closedir =True
+			closedir =True
 
 	if closedir: xbmcplugin.endOfDirectory(plugin_handle)
