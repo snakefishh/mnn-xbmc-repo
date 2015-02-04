@@ -7,4 +7,7 @@
     <setting type="sep" />
     <setting id="VideoSource"  label="Источник Видео" type="enum"  values="Спрашивать|Лучшее Качество|Облегченный"  default="0"/>
     <setting id="categorize"   label="Избранное: разбивать на категории" type="bool" default="true" />
+    <setting type="sep"/>
+    <setting id="item_format"  label="Настройка отображения списка" type="text" default="/s[S] /s/t /y ● /c (/q [COLOR 80008000]↑/vp[/COLOR] [COLOR 80FF0000]↓/vn[/COLOR])" />
+    <setting label="Шаблоны"   type="action" option="close" action="RunScript($CWD/default.py, itemformatsettings)" />
 </settings>

@@ -30,20 +30,34 @@ class Treetv(Plugin):
         main = Soup.find('div', 'main_content')
         items = main.findAll('div', 'item')
 
+        paginationControl = main.find('div', 'paginationControl')
+        if paginationControl:
+            pages = paginationControl.findAll('a', 'page')
+            for page in pages:
+                Data_ = Get_url('http://tree.tv/'+page['href'])
+                Soup =BeautifulSoup(Data_)
+                main = Soup.find('div', 'main_content')
+                items_ = main.findAll('div', 'item')
+                items = items + items_
         if items:
             AddItem(clGreen%('----Найдено на '+self.Name+'----'))
             for item in items:
                 tmp = item.find('div', 'preview')
-                img = tmp.find('img', alt=re.compile('.+'))
-                if img:
+                try:
+                    img = tmp.find('img', alt=re.compile('.+'))
                     img = img['src']
-                else:
+                except:
                     img = ''
                 item_content = item.find('div', 'item_content')
+                try:
+                    quolity = item_content.find('div', 'quolity').span.string
+                    quolity = ' ['+quolity+']'
+                except:
+                    quolity =''
                 a = item_content.find('a')
                 href = a['href']
                 title = a.string
-                AddFolder(title,'External_Search',{'plugin':self.__class__.__name__,'command':'Content', 'href':href}, img='http://tree.tv'+img,ico='http://tree.tv'+img)
+                AddFolder(title+quolity,'External_Search',{'plugin':self.__class__.__name__,'command':'Content', 'href':href}, img='http://tree.tv'+img,ico='http://tree.tv'+img)
             return True
 
     def Content(self, args):

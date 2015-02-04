@@ -14,9 +14,23 @@ addon_data_path= xbmc.translatePath(os.path.join("special://profile/addon_data",
 if (sys.platform == 'win32') or (sys.platform == 'win64'):
 	addon_data_path = addon_data_path.decode('utf-8')
 
+def itemformatsettings():
+	dialog = xbmcgui.Dialog()
+	sh ={'Название, Год, Страна, (Качество, Рейтинг)'  :'/s[S] /s/t /y ● /c (/q [COLOR 80008000]↑/vp[/COLOR] [COLOR 80FF0000]↓/vn[/COLOR])',
+		 'Название, (Качество, Рейтинг)'               :'/s[S] /s/t (/q [COLOR 80008000]↑/vp[/COLOR] [COLOR 80FF0000]↓/vn[/COLOR])',
+		 'Название'                                            :'/s[S] /s/t)'
+		}
+	ret = dialog.select('Шаблоны', sh.keys())
+	if ret==-1:
+		return
+	addon.setSetting('item_format',sh[sh.keys()[ret]])
+	addon.openSettings()
+if sys.argv[1]=='itemformatsettings':
+	itemformatsettings()
+	sys.exit()
+
 plugin_handle	= int(sys.argv[1])
 xbmcplugin.setContent(plugin_handle, 'movies')
-site_url='http://cxz.to'
 site_url='http://cxz.to'
 
 class SiteUrlParse:
@@ -73,10 +87,6 @@ class SiteUrlParse:
 			url = url[:-1]
 		return url
 
-
-Headers={}####################################
-
-
 def Login(login, passw):
 	url = site_url+'/login.aspx'
 	Post={'login':login, 'passwd':passw, 'remember':'1'}
@@ -123,9 +133,6 @@ def start(params):
 	url = site_url+href
 	Login, Data =Get_url_lg(url, NoMessage=False)
 	Soup = BeautifulSoup(Data)
-
-	#AddFolder('readpersons1', 'readpersons1')
-
 
 	if Login:
 		AddFolder('Избранное', 'Favourites')
@@ -248,12 +255,16 @@ def Cat(params):
 	xbmcplugin.endOfDirectory(plugin_handle, updateListing=upd, cacheToDisc=True)
 
 def CreateCatItem(pop, mSerials=False):
+	item_format = addon.getSetting('item_format').decode('UTF-8')
+	mark_ser = re.compile('\/s(.+?)\/s').findall(item_format)
+
 	href = pop['href']
 	img   = pop.find('img' ,src=True)['src']
 	imgup = img.replace('/6/', '/1/')
 	title = pop.find('span', 'b-poster-detail__title').string
 	tmp = pop.findAll('span', 'b-poster-detail__field')
 	field = tmp[0].string
+	country = field.split(u'●')[1].strip()
 	year  =re.compile('(\d{4})').findall(field)[0]
 	cast = tmp[1].string
 	if cast:
@@ -269,7 +280,19 @@ def CreateCatItem(pop, mSerials=False):
 		allquality += qual['class'].replace('quality', '').replace('m-','').replace(' ', '')+','
 	allquality = allquality[:-1].upper()
 
-	ctitle =('[S] ' if mSerials and 'serials' in href else '')+title+'  '+field+u' (%s ↑%s ↓%s)'%(allquality, AA(clGreen,'80')%vote_positive,AA(clRed,'80')%vote_negative)
+	formats = {'/t':title, '/y':year, '/c':country, '/q':allquality, '/vp':vote_positive, '/vn':vote_negative, '/h':href}
+	if mark_ser:
+		mark_ser = mark_ser[0]
+		if mSerials and 'serials' in href:
+			item_format = item_format.replace('/s'+mark_ser+'/s', mark_ser)
+		else:
+			item_format = item_format.replace('/s'+mark_ser+'/s','')
+
+	for f in formats:
+		item_format = item_format.replace(f, formats[f])
+
+	#ctitle =('[S] ' if mSerials and 'serials' in href else '')+title+'  '+field+u' (%s ↑%s ↓%s)'%(allquality, AA(clGreen,'80')%vote_positive,AA(clRed,'80')%vote_negative)
+	ctitle =  item_format
 
 	ContextMenu=[]
 	if Login:
@@ -280,9 +303,10 @@ def CreateCatItem(pop, mSerials=False):
 		cmenu1=cmenu.copy()
 		cmenu1['mode2']='forlater'
 		ContextMenu = [(clAliceblue%('cxz.to Добавить В Избранное'), 'XBMC.RunPlugin(%s)'%uriencode(cmenu)),
-					   (clAliceblue%('cxz.to Отложить на Будущее'),  'XBMC.RunPlugin(%s)'%uriencode(cmenu1))]#, (clAliceblue%('cxz.to Информация'),           'XBMC.Action(Info)')]
+					   (clAliceblue%('cxz.to Отложить на Будущее'),  'XBMC.RunPlugin(%s)'%uriencode(cmenu1)),
+					   (clAliceblue%('cxz.to Информация'),           'XBMC.Action(Info)')]
 
-	info ={'type':'video','plot':plot,'title':title,'year':year,'cast':cast}
+	info ={'type':'video','plot':plot,'title':title,'year':year,'cast':cast, 'studio':country}
 	property={'fanart_image':imgup}
 	AddFolder(ctitle.encode('UTF-8'), 'Content', {'href':href, 'title':title.encode('UTF-8')}, info=info, img=imgup, ico=img, cmItems=ContextMenu,property=property)
 
@@ -708,7 +732,6 @@ def Content(params):
 		season='0'
 	try:
 		query['folder']=params['rel']
-
 	except:
 		query['folder']='0'
 		fl_sh = True
@@ -826,8 +849,8 @@ def Content(params):
 
 	if fl_sh:
 		win = xbmcgui.Window(xbmcgui.getCurrentWindowId())
-		ctrl= str(win.getFocusId())
-		xbmc.executebuiltin("SetFocus("+ctrl+",5)")
+		ctrl= win.getFocusId()
+		xbmc.executebuiltin("SetFocus("+str(ctrl)+",5)")
 
 def Content_plus(params):
 	import kinopoisk
@@ -1026,3 +1049,10 @@ def External_Search(params):
 			closedir =True
 
 	if closedir: xbmcplugin.endOfDirectory(plugin_handle)
+
+def itemformatsettings():
+	print 'qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq'
+	dialog = xbmcgui.Dialog()
+	ret = dialog.select('3', ['1','2'])
+	addon.setSetting('item_format','123')
+	addon.openSettings()
