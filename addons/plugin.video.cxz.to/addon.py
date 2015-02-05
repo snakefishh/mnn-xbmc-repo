@@ -170,7 +170,7 @@ def start(params):
 		upd = params['upd']=='upd'
 	except:
 		upd = False
-	xbmcplugin.endOfDirectory(plugin_handle, updateListing=upd, cacheToDisc=True)
+	xbmcplugin.endOfDirectory(plugin_handle, updateListing=upd, cacheToDisc=False)
 
 def Cat(params):
 	cat_href = urllib.unquote_plus(params['href'])
@@ -252,7 +252,7 @@ def Cat(params):
 		upd = params['upd']=='upd'
 	except:
 		upd=False
-	xbmcplugin.endOfDirectory(plugin_handle, updateListing=upd, cacheToDisc=True)
+	xbmcplugin.endOfDirectory(plugin_handle, updateListing=upd, cacheToDisc=False)
 
 def CreateCatItem(pop, mSerials=False):
 	item_format = addon.getSetting('item_format').decode('UTF-8')
@@ -588,6 +588,7 @@ def Favourites(params):
 	AddFolder('На будущее',    'Favourites2', {'page':'forlater'})
 	AddFolder('Я рекомендую',  'Favourites2', {'page':'irecommended'})
 	AddFolder('Завершенное',   'Favourites2', {'page':'finished'})
+	AddFolder('Персоны',       'GetPersonFav')
 	xbmcplugin.endOfDirectory(plugin_handle)
 
 def Favourites2(params):
@@ -748,8 +749,6 @@ def Content(params):
 			uri = '%s?%s' % ('plugin://plugin.video.torrenter/', urllib.urlencode({'action':'search','url':ctitle}))
 			xbmcplugin.addDirectoryItem(int(sys.argv[1]), uri, item, isFolder=True)
 
-
-		#####
 		if '/serials/' in href or '/tvshow/' in href or '/cartoonserials/' in href:
 			Soup = BeautifulSoup(SData)
 			results=Soup.find('div','b-tab-item__title-origin')
@@ -887,7 +886,8 @@ def Content_plus(params):
 		for d_item in director_itemprop:
 			director_href = d_item.find('a')['href']
 			director_name = d_item.find('span', itemprop="name").string
-			ContextMenu = [(clAliceblue%('cxz.to Поиск во всех категориях'), 'Container.Update(%s?%s)'%(sys.argv[0],urllib.urlencode({'mode':'Search','search':director_name, 'page':'0'})))]
+			ContextMenu = [(clAliceblue%('cxz.to Поиск во всех категориях'), 'Container.Update(%s?%s)'%(sys.argv[0],urllib.urlencode({'mode':'Search','search':director_name, 'page':'0'}))),
+						   (clAliceblue%('cxz.to Добавить персону в Избранное'),'XBMC.RunPlugin(%s)'%uriencode({'mode':'AddPersonFav', 'name':director_name, 'href':director_href}))]
 			AddFolder(director_name, 'Cat', {'href':director_href+'/?view=detailed'}, cmItems=ContextMenu)
 
 	actor_itemprop= info.findAll('span', itemprop="actor")
@@ -896,7 +896,9 @@ def Content_plus(params):
 		for a_item in actor_itemprop:
 			actor_href = a_item.find('a')['href']
 			actor_name = a_item.find('span', itemprop="name").string
-			ContextMenu = [(clAliceblue%('cxz.to Поиск во всех категориях'), 'Container.Update(%s?%s)'%(sys.argv[0],urllib.urlencode({'mode':'Search','search':actor_name, 'page':'0'})))]
+			ContextMenu = [(clAliceblue%('cxz.to Поиск во всех категориях'), 'Container.Update(%s?%s)'%(sys.argv[0],urllib.urlencode({'mode':'Search','search':actor_name, 'page':'0'}))),
+						   (clAliceblue%('cxz.to Добавить персону в Избранное'),'XBMC.RunPlugin(%s)'%uriencode({'mode':'AddPersonFav', 'name':actor_name, 'href':actor_href}))]
+
 			AddFolder(actor_name, 'Cat', {'href':actor_href+'/?view=detailed'}, cmItems=ContextMenu)
 
 	leading = info.findAll('a', href=re.compile('.*/leader/.*'))
@@ -905,10 +907,17 @@ def Content_plus(params):
 		for l in leading:
 			l_href = l['href']
 			l_name = l.span.string
-			ContextMenu = [(clAliceblue%('cxz.to Поиск во всех категориях'), 'Container.Update(%s?%s)'%(sys.argv[0],urllib.urlencode({'mode':'Search','search':l_name, 'page':'0'})))]
+			ContextMenu = [(clAliceblue%('cxz.to Поиск во всех категориях'), 'Container.Update(%s?%s)'%(sys.argv[0],urllib.urlencode({'mode':'Search','search':l_name, 'page':'0'}))),
+						   (clAliceblue%('cxz.to Добавить персону в Избранное'),'XBMC.RunPlugin(%s)'%uriencode({'mode':'AddPersonFav', 'name':l_name, 'href':l_href}))]
 			AddFolder(l_name, 'Cat', {'href':l_href+'/?view=detailed'}, cmItems=ContextMenu)
 
 	xbmcplugin.endOfDirectory(plugin_handle)
+
+def AddPersonFav(params):
+	pass
+
+def GetPersonFav(params):
+	pass
 
 def Similar(params):
 	Data = xbmc.getInfoLabel("ListItem.Property(cxztodata)")
@@ -922,7 +931,6 @@ def Similar(params):
 	for link in links:
 		href = link['href']
 		img = link.find('span', 'b-poster-new__image-poster')['style']
-		#="background-image: url('http://s3.dotua.org/fsua_items/cover/00/02/82/9/00028237.jpg'))
 		tmp = re.compile("(http:\/\/[^']+)").findall(img)
 		if tmp:
 			img = tmp[0]
@@ -1049,10 +1057,3 @@ def External_Search(params):
 			closedir =True
 
 	if closedir: xbmcplugin.endOfDirectory(plugin_handle)
-
-def itemformatsettings():
-	print 'qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq'
-	dialog = xbmcgui.Dialog()
-	ret = dialog.select('3', ['1','2'])
-	addon.setSetting('item_format','123')
-	addon.openSettings()
