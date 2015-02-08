@@ -593,7 +593,6 @@ def Favourites(params):
 
 def Favourites2(params):
 	categorize = addon.getSetting('categorize')
-	print categorize
 	url =site_url+'/myfavourites.aspx?page='+params['page']
 	Login, Data =Get_url_lg(url)
 	if not Login:return
@@ -728,17 +727,16 @@ def Content(params):
 
 	fl_sh = False
 	try:
-		season=params['season']
-	except:
-		season='0'
-	try:
 		query['folder']=params['rel']
 	except:
 		query['folder']='0'
 		fl_sh = True
 		SData =Get_url(site_url+href, Cookie=True)
-		AddFolder('Дополнительно','Content_plus', property={'cxztodata':SData})
-		AddFolder('Похожие материалы','Similar', property={'cxztodata':SData})
+		F = open(addon_data_path+'/cache', 'w')
+		F.write(SData)
+		F.close()
+		AddFolder('Дополнительно','Content_plus')
+		AddFolder('Похожие материалы','Similar')
 
 		try:
 			torrenter = xbmcaddon.Addon(id = 'plugin.video.torrenter')
@@ -772,23 +770,36 @@ def Content(params):
 			AddFolder((clRed%'Некоторые файлы заблокированы ' if isBlocked else '')+ 'Альтернативы', 'External_Search', {'plugin':'all', 'command':'Search','search':ctitle.split('/')[0].encode('UTF-8')})
 		AddItem('_'*30+chr(10)+' ','')
 
+	addon.setSetting('tabfolder','0')
+
 	li = Soup.findAll('li', 'folder')
-	isFolders=False
-	isSubFolder = False
+
 	for l in li:
-		try:
-			isSubFolder = l.parent.parent['class']=='folder'
-		except:
-			isSubFolder = False
+		tabfolder = int(addon.getSetting('tabfolder'))
+		del_ul = l.ul
+		if del_ul:
+			addon.setSetting('tabfolder', str(tabfolder+1))
+			del_ul.extract()
 
 		a = l.find('a', 'title')
-		title= a.string
-		if title==None:
-			title = l.find('a', 'title').b.string
+		try:
+			title = a.b.string
+		except:
+			title_ = a.contents
+			if len(title_)>1:
+				title = title_[0]+BeautifulSoup(str(title_[1])).find('font').string
+			else:
+				title = title_[0]
 
-		results=re.compile('(\d+) сезон', re.IGNORECASE).findall(title.encode('utf-8'))
-		if results:
-			season=str(int(results[0]))
+		rel = re.compile("parent_id:\s?'?([\d]+)").findall(a['rel'])[0]
+
+		quality_list= re.compile("quality_list:\s?'([^']+)").findall(a['rel'])
+		if quality_list:
+			quality_list = quality_list[0]
+		else:
+			quality_list = 'None'
+
+		NextNotFolder  = l.find('a', 'folder-filelist') != None
 
 		lang = a['class']
 		lang = re.compile('\sm\-(\w+)\s').findall(lang)
@@ -797,7 +808,6 @@ def Content(params):
 		else:
 			lang=''
 
-		rel = re.compile('\d+').findall(a['rel'])[0]
 		size = l.findAll('span','material-size')
 		sz=''
 		for size_ in size:
@@ -811,39 +821,62 @@ def Content(params):
 
 		title = '[B]'+lang.encode('UTF-8')+title.encode('UTF-8')+' '+sz+'[/B]'+chr(10)
 		title += '      [I]'+clDimgray%(details+' '+date)+'[/I]'
-		AddFolder(('   ' if isSubFolder else '')+title, 'Content', {'rel':rel, 'href':href, 'title':ctitle})
-		isFolders=True
 
-	li = Soup.findAll('li', 'b-file-new')
-	if True:#not isFolders:
-		for l in li:
-			try:
-				title = l.find('span', 'b-file-new__material-filename-text')
-				if title == None:
-					title = l.find('span', 'b-file-new__link-material-filename-text')
-				title=title.string
-				a= l.find('a', 'b-file-new__link-material')
-				href= a['href']
-				a= l.find('a', 'b-file-new__link-material-download')
-				href_dl = a['href']
-				size = a.span.string
-			except:
-				continue
-			cmenu={'mode'  :'download', 'href':href_dl, 'title':title}
-			ContextMenu = [(clAliceblue%('cxz.to Скачать файл'), 'XBMC.RunPlugin(%s)'%uriencode(cmenu))]
-			info={'type':'Video','title':ctitle}
-			if '/serials/' in href or '/tvshow/' in href or '/cartoonserials/' in href:
-				results=filename2match(title)
-				if results:
-					info['tvshowtitle']=ctitle
-					info['title']=title
-					if season=='0':
-						info['season']=results['season']
-					else:
-						info['season']=season
-					info['episode']=results['episode']
-			prop={'IsPlayable':'true'}
-			AddItem(('   ' if isFolders else '')+('   ' if isSubFolder else '')+title+' '+size,'Play',{'href':href, 'href_dl':href_dl}, info=info, property=prop, cmItems=ContextMenu)
+		if NextNotFolder:
+			AddFolder('   '*tabfolder+title, 'Content_files', {'rel':rel, 'href':href, 'title':ctitle, 'quality_list':quality_list})
+		else:
+			AddFolder('   '*tabfolder+title, 'Content', {'rel':rel, 'href':href, 'title':ctitle})
+
+
+
+
+	#Список файлов
+	# ContentList=[]
+	# li = Soup.findAll('li', 'b-file-new')
+	# if li:
+	# 	for l in li:
+	# 		ser = re.compile('series-([^ |$]+)').findall(str(l['class']))[0]
+	# 		video_qul= l.find('span', 'video-qulaity').string
+	#
+	# 		try:
+	# 			title = l.find('span', 'b-file-new__material-filename-text')
+	# 			if title == None:
+	# 				title = l.find('span', 'b-file-new__link-material-filename-text')
+	# 			title=title.string
+	# 			a= l.find('a', 'b-file-new__link-material')
+	# 			href= a['href']
+	# 			a= l.find('a', 'b-file-new__link-material-download')
+	# 			href_dl = a['href']
+	# 			size = a.span.string
+	# 		except:
+	# 			continue
+	# 		cmenu={'mode'  :'download', 'href':href_dl, 'title':title}
+	# 		ContextMenu = [(clAliceblue%('cxz.to Скачать файл'), 'XBMC.RunPlugin(%s)'%uriencode(cmenu))]
+	# 		info={'type':'Video','title':ctitle}
+	# 		if '/serials/' in href or '/tvshow/' in href or '/cartoonserials/' in href:
+	# 			results=filename2match(title)
+	# 			if results:
+	# 				info['tvshowtitle']=ctitle
+	# 				info['title']=title
+	# 				if season=='0':
+	# 					info['season']=results['season']
+	# 				else:
+	# 					info['season']=season
+	# 				info['episode']=results['episode']
+	# 		prop={'IsPlayable':'true'}
+	# 		#AddItem(('   ' if isFolders else '')+('   ' if isSubFolder else '')+title+' '+size,'Play',{'href':href, 'href_dl':href_dl}, info=info, property=prop, cmItems=ContextMenu)
+	#
+	# 		Con =[ser, video_qul, ('   ' if isFolders else '')+('   ' if isSubFolder else '')+title+' '+size, 'Play',{'href':href, 'href_dl':href_dl}, info, prop, ContextMenu]
+	# 		ContentList.append(Con)
+	#
+	# 	video_qul= []
+	# 	for i in ContentList:
+	# 			if i[1] not in video_qul:
+	# 				video_qul.append(i[1])
+	# 				AddFolder(i[1])
+
+	addon.setSetting('quality', '0')
+	addon.setSetting('Content_files_cache', 'false')
 	xbmcplugin.endOfDirectory(plugin_handle)
 
 	if fl_sh:
@@ -851,13 +884,102 @@ def Content(params):
 		ctrl= win.getFocusId()
 		xbmc.executebuiltin("SetFocus("+str(ctrl)+",5)")
 
+def Content_files(params):
+	ctitle=urllib.unquote(params['title'])
+	href=urllib.unquote(params['href'])
+	quality_list=urllib.unquote(params['quality_list'])
+
+	quality_list = quality_list.split(',')
+	cur_quality = int(addon.getSetting('quality'))
+
+	if addon.getSetting('Content_files_cache')=='false':
+		query={}
+		query['folder']=params['rel']
+		url=site_url+href+'?ajax'
+		for qr in query:
+			url+='&'+qr+'='+query[qr]
+
+		Data =Get_url(url, Cookie=True)
+		if Data:
+			F = open(addon_data_path+'/Content_files_cache', 'w')
+			F.write(Data)
+			F.close()
+			addon.setSetting('Content_files_cache', 'true')
+	else:
+		F = open(addon_data_path+'/Content_files_cache', 'r')
+		Data = F.read()
+		F.close()
+
+	Soup = BeautifulSoup(Data)
+	li = Soup.findAll('li', 'b-file-new')
+	if li:
+
+		if quality_list[0]!='None':
+			qSelectTitle = ''
+			for i in range(0,len(quality_list)):
+				if i == cur_quality:
+					ii = clGreen%quality_list[i]
+				else:
+					ii = quality_list[i]
+				qSelectTitle += ii+' '
+			AddFolder('Качество: '+qSelectTitle, 'Content_files_refresh', {'max':len(quality_list)})
+
+		for l in li:
+
+			try:
+				qual = l.find('span', 'video-qulaity').string
+			except:
+				qual = quality_list[0]
+			if (quality_list[0]!='None')and(qual != quality_list[cur_quality])and(qual != quality_list[cur_quality]+'p'):
+				continue
+
+			try:
+				title = l.find('span', 'b-file-new__material-filename-text')
+				if title == None:
+					title = l.find('span', 'b-file-new__link-material-filename-text')
+				title=title.string
+				a= l.find('a', 'b-file-new__link-material')
+				href =''
+				if a:
+					href= a['href']
+				a= l.find('a', 'b-file-new__link-material-download')
+				href_dl = a['href']
+				size = a.span.string
+			except:
+				continue
+			cmenu ={'mode'  :'download', 'href':href_dl, 'title':title}
+			cmenu1={'mode':'Play', 'href':href, 'href_dl':href_dl, 'VS':'opt'}
+			ContextMenu = [(clAliceblue%('cxz.to Скачать файл'), 'XBMC.RunPlugin(%s)'%uriencode(cmenu)),
+						   (clAliceblue%('cxz.to Смотреть Оптимизированный'), 'XBMC.RunScript(plugin.video.cxz.to, -1, %s)'%urllib.urlencode(cmenu1))]
+
+			info={'type':'Video','title':ctitle}
+			if '/serials/' in href or '/tvshow/' in href or '/cartoonserials/' in href:
+				results=filename2match(title)
+				if results:
+					info['tvshowtitle']=ctitle
+					info['title']=ctitle
+					info['season']=results['season']
+					info['episode']=results['episode']
+			prop={'IsPlayable':'true'}
+			AddItem(title+' '+size,'Play',{'href':href, 'href_dl':href_dl, 'VS':'full'}, info=info, property=prop, cmItems=ContextMenu)
+	xbmcplugin.endOfDirectory(plugin_handle)
+
+def Content_files_refresh(params):
+	cur_quality = int(addon.getSetting('quality'))
+	max = int(params['max'])
+	if cur_quality == max-1:
+		addon.setSetting('quality', '0')
+	else:
+		addon.setSetting('quality', str(cur_quality+1))
+	xbmc.executebuiltin('Container.Refresh')
+
+
 def Content_plus(params):
 	import kinopoisk
 
-	#href=urllib.unquote(params['href'])
-	#url=site_url+href
-	#Data =Get_url(url, Cookie=True)
-	Data = xbmc.getInfoLabel("ListItem.Property(cxztodata)")
+	F = open(addon_data_path+'/cache', 'r')
+	Data = F.read()
+	F.close()
 	Soup = BeautifulSoup(Data)
 
 	try:
@@ -920,7 +1042,10 @@ def GetPersonFav(params):
 	pass
 
 def Similar(params):
-	Data = xbmc.getInfoLabel("ListItem.Property(cxztodata)")
+	F = open(addon_data_path+'/cache', 'r')
+	Data = F.read()
+	F.close()
+
 	Soup = BeautifulSoup(Data)
 	sim = Soup.find('div', 'b-similar')
 	if not sim:
@@ -973,54 +1098,49 @@ def ADFav(params):
 def Play(params):
 	link    = site_url+urllib.unquote(params['href'])
 	link_dl = site_url+urllib.unquote(params['href_dl'])
+	vs = urllib.unquote(params['VS'])
 
-	try:
-		with open(addon_data_path+'/playlist','rb') as F:
-			LocalPL = cPickle.load(F)
-	except:
-		if not os.path.exists(os.path.dirname(addon_data_path)):
-				os.makedirs(os.path.dirname(addon_data_path))
-		LocalPL={}
-
-	file_id = link.split('=')[1]
-
-	try:
-		path = LocalPL[file_id]
-	except:
-		Login, Data = Get_url_lg(link)
-		playlist = re.compile("(?s)playlist:\s*\[\s*\{\s*(.+?)\s*\}\s*\]").findall(Data)
-		if not playlist: return
-
-		playlist= playlist[0].replace('\n','').replace('\t','').replace(' ','').replace('download_url','')
-		urls = re.compile("url:'([^']+).+?file_id:'([^']+)").findall(playlist)
-
-		if not urls:return
-		pl={}
-		for i in urls:
-			pl[i[1]]= site_url+i[0]
-		with open(addon_data_path+'/playlist','wb') as F:
-			cPickle.dump(pl,F)
-		path = pl[file_id]
-
-	VideoSource =addon.getSetting('VideoSource')
-	if VideoSource=='0':
-		dialog = xbmcgui.Dialog()
-		dialog_items =['Источник 1 (Лучшее Качество)' ,'Источник 2 (Облегченный)']
-		dlg= dialog.select('Источник:', dialog_items)
-		if dlg!=1:
-			path = link_dl
-	elif VideoSource=='1':
+	VideoSource =addon.getSetting('VideoSourceB')
+	if (VideoSource=='false')and(vs == 'full'):
 		path = link_dl
+		item = xbmcgui.ListItem(path=path)
+		xbmcplugin.setResolvedUrl(plugin_handle, True, item)
+	else:
 
+		try:
+			with open(addon_data_path+'/playlist','rb') as F:
+				LocalPL = cPickle.load(F)
+		except:
+			if not os.path.exists(os.path.dirname(addon_data_path)):
+					os.makedirs(os.path.dirname(addon_data_path))
+			LocalPL={}
 
-	item = xbmcgui.ListItem(path=path)
+		file_id = link.split('=')[1]
 
-	#title  = xbmc.getInfoLabel('Listitem.Title')
-	#title = title+''
-	#item.setInfo('video', infoLabels={'title':title})
-	item.setProperty('mimetype', 'video/flv')
+		try:
+			path = LocalPL[file_id]
+		except:
+			Login, Data = Get_url_lg(link)
+			playlist = re.compile("(?s)playlist:\s*\[\s*\{\s*(.+?)\s*\}\s*\]").findall(Data)
+			if not playlist: return
 
-	xbmcplugin.setResolvedUrl(plugin_handle, True, item)
+			playlist= playlist[0].replace('\n','').replace('\t','').replace(' ','').replace('download_url','')
+			urls = re.compile("url:'([^']+).+?file_id:'([^']+)").findall(playlist)
+
+			if not urls:return
+			pl={}
+			for i in urls:
+				pl[i[1]]= site_url+i[0]
+			with open(addon_data_path+'/playlist','wb') as F:
+				cPickle.dump(pl,F)
+			path = pl[file_id]
+
+			title  = xbmc.getInfoLabel('Listitem.Title')
+			item = xbmcgui.ListItem(title)
+			item.setInfo('video', infoLabels={'title':title})
+			#item.setProperty('mimetype', 'video/flv')
+			xbmc.Player().play(path,item)
+
 
 def download(params):
 	dir  =addon.getSetting('DownloadDir')
@@ -1035,25 +1155,21 @@ def download(params):
 
 def filename2match(filename):
 	results={'label':filename}
-	urls=['(.+)s(\d+)e(\d+)','(.+)s(\d+)\.e(\d+)', '(.+) [\[|\(](\d+)[x|-](\d+)[\]|\)]', '(.+) (\d+)[x|-](\d+)'] #same in service
+	urls=['(.+)s(\d+)e(\d+)','(.+)s(\d+)\.e(\d+)', '(.+) [\[|\(](\d+)[x|-](\d+)[\]|\)]', '(.+) (\d+)[x|-](\d+)', 's(\d+)e(\d+)\.?([^.]+)'] #same in service
 	for file in urls:
 		match=re.compile(file, re.I | re.IGNORECASE).findall(filename)
-		#print str(results)
 		if match:
 			results['showtitle'], results['season'], results['episode']=match[0]
 			results['showtitle']=results['showtitle'].replace('.',' ').replace('_',' ').strip().replace('The Daily Show','The Daily Show With Jon Stewart')
-			#print('[filename2match] '+str(results))
 			return results
 #--------------------------------
 
 def External_Search(params):
 	import ExtSearch.ExtSearch as ExtSearch
-
 	ExtSearch.LoadPlugins()
 	closedir = False
 	for p in ExtSearch.Plugins:
 		rez = p.Command(params)
 		if rez:
 			closedir =True
-
 	if closedir: xbmcplugin.endOfDirectory(plugin_handle)
