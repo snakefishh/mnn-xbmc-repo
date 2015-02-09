@@ -18,7 +18,7 @@ def itemformatsettings():
 	dialog = xbmcgui.Dialog()
 	sh ={'Название, Год, Страна, (Качество, Рейтинг)'  :'/s[S] /s/t /y ● /c (/q [COLOR 80008000]↑/vp[/COLOR] [COLOR 80FF0000]↓/vn[/COLOR])',
 		 'Название, (Качество, Рейтинг)'               :'/s[S] /s/t (/q [COLOR 80008000]↑/vp[/COLOR] [COLOR 80FF0000]↓/vn[/COLOR])',
-		 'Название'                                            :'/s[S] /s/t)'
+		 'Название'                                            :'/s[S] /s/t'
 		}
 	ret = dialog.select('Шаблоны', sh.keys())
 	if ret==-1:
@@ -87,6 +87,36 @@ class SiteUrlParse:
 			url = url[:-1]
 		return url
 
+class Paginator:
+	pg = 0
+	previous_link =False
+	next_link = None
+	func = None
+	def __init__(self, data, func=''):
+		self.func = func
+		pl = data.find('a', 'previous-link')
+		if pl:
+			self.previous_link = pl['href']
+			self.pg = re.compile('page=(\d+?$)').findall(self.previous_link)
+			if self.pg:
+				self.pg =int(self.pg[0])+1
+			else:
+				self.pg=1
+		else:
+			self.pg=0
+
+		nl = data.find('a', 'next-link')
+		if nl:
+			self.next_link =nl['href']
+
+	def AddPrevious(self):
+		if self.previous_link:
+			AddFolder(clGreen%('< Страница '+str(self.pg)), self.func,{'href':self.previous_link}, property={'refresh':'1'})
+
+	def AddNext(self):
+		if self.next_link:
+			AddFolder(clGreen%('Страница '+str(self.pg+2)+' >'), self.func,{'href':self.next_link}, property={'refresh':'1'})
+
 def Login(login, passw):
 	url = site_url+'/login.aspx'
 	Post={'login':login, 'passwd':passw, 'remember':'1'}
@@ -124,7 +154,6 @@ def Get_url_lg(url, headers={}, Post = None, GETparams={}, JSON=False, Proxy=Non
 	return False, Data
 
 def start(params):
-
 	try:
 		href= urllib.unquote_plus(params['href'])
 	except:
@@ -142,35 +171,25 @@ def start(params):
 	for section in header_menu_section:
 		title = section.string.encode('UTF-8')
 		AddFolder(title, 'Cat', {'href':section['href']+'?view=detailed'})
-
 	AddItem('_'*30+chr(10)+' ')
 
-	pr_page   = Soup.find('a', 'previous-link')
-	if pr_page:
-		pr_page= pr_page['href']
-		pg = re.compile('page=(\d+?$)').findall(pr_page)
-		if pg:
-			pg =int(pg[0])+1
-		else:
-			pg=1
-		AddFolder(clGreen%('< Страница '+str(pg)),'',{'href':pr_page,'upd':'upd'})
-	else:
-		pg=0
+	page = Paginator(Soup,'')
+	page.AddPrevious()
 
 	section_list = Soup.find('div', 'b-section-list')
 	poster_detail = section_list.findAll('a', 'b-poster-detail__link')
 	for pop in poster_detail:
 		CreateCatItem(pop, True)
 
-	next_page = Soup.find('a', 'next-link')
-	if next_page:
-		next_page =next_page['href']
-		AddFolder(clGreen%('Страница '+str(pg+2)+' >'),'',{'href':next_page,'upd':'upd'})
-	try:
-		upd = params['upd']=='upd'
-	except:
-		upd = False
+	page.AddNext()
+
+	upd = xbmc.getInfoLabel('ListItem.Property(refresh)')=='1'
 	xbmcplugin.endOfDirectory(plugin_handle, updateListing=upd, cacheToDisc=False)
+
+	# xbmc.sleep(100)
+	# win = xbmcgui.Window(xbmcgui.getCurrentWindowId())
+	# ctrl= win.getFocusId()
+	# xbmc.executebuiltin("SetFocus("+str(ctrl)+",8)")
 
 def Cat(params):
 	cat_href = urllib.unquote_plus(params['href'])
@@ -205,7 +224,7 @@ def Cat(params):
 			for a in tega:
 				item_title = a.string
 				if not item_title: item_title = a.find('span').string
-				if a['href']<>'#':#???????????????????????????
+				if a['href']<>'#':
 					items[item_title]=a['href']
 			rec['items']=items
 
@@ -224,34 +243,18 @@ def Cat(params):
 	AddItem(flTitle,'SetFilter', {'cathref':cat_href})
 	AddItem('_'*30+chr(10)+' ')
 
-	pr_page   = Soup.find('a', 'previous-link')
-	if pr_page:
-		pr_page= pr_page['href']
-		pg = re.compile('page=(\d+?$)').findall(pr_page)
-		if pg:
-			pg =int(pg[0])+1
-		else:
-			pg=1
-		AddFolder(clGreen%('< Страница '+str(pg)),'Cat',{'href':pr_page,'upd':'upd'})
-	else:
-		pg=0
+	page = Paginator(Soup,'Cat')
+	page.AddPrevious()
 
 	section_list = Soup.find('div', 'b-section-list')
-
 	poster_detail = section_list.findAll('a', 'b-poster-detail__link')
-
 
 	for pop in poster_detail:
 		CreateCatItem(pop)
 
-	next_page = Soup.find('a', 'next-link')
-	if next_page:
-		next_page =next_page['href']
-		AddFolder(clGreen%('Страница '+str(pg+2)+' >'),'Cat',{'href':next_page,'upd':'upd'})
-	try:
-		upd = params['upd']=='upd'
-	except:
-		upd=False
+	page.AddNext()
+
+	upd = xbmc.getInfoLabel('ListItem.Property(refresh)')=='1'
 	xbmcplugin.endOfDirectory(plugin_handle, updateListing=upd, cacheToDisc=False)
 
 def CreateCatItem(pop, mSerials=False):
@@ -291,7 +294,6 @@ def CreateCatItem(pop, mSerials=False):
 	for f in formats:
 		item_format = item_format.replace(f, formats[f])
 
-	#ctitle =('[S] ' if mSerials and 'serials' in href else '')+title+'  '+field+u' (%s ↑%s ↓%s)'%(allquality, AA(clGreen,'80')%vote_positive,AA(clRed,'80')%vote_negative)
 	ctitle =  item_format
 
 	ContextMenu=[]
@@ -827,62 +829,15 @@ def Content(params):
 		else:
 			AddFolder('   '*tabfolder+title, 'Content', {'rel':rel, 'href':href, 'title':ctitle})
 
-
-
-
-	#Список файлов
-	# ContentList=[]
-	# li = Soup.findAll('li', 'b-file-new')
-	# if li:
-	# 	for l in li:
-	# 		ser = re.compile('series-([^ |$]+)').findall(str(l['class']))[0]
-	# 		video_qul= l.find('span', 'video-qulaity').string
-	#
-	# 		try:
-	# 			title = l.find('span', 'b-file-new__material-filename-text')
-	# 			if title == None:
-	# 				title = l.find('span', 'b-file-new__link-material-filename-text')
-	# 			title=title.string
-	# 			a= l.find('a', 'b-file-new__link-material')
-	# 			href= a['href']
-	# 			a= l.find('a', 'b-file-new__link-material-download')
-	# 			href_dl = a['href']
-	# 			size = a.span.string
-	# 		except:
-	# 			continue
-	# 		cmenu={'mode'  :'download', 'href':href_dl, 'title':title}
-	# 		ContextMenu = [(clAliceblue%('cxz.to Скачать файл'), 'XBMC.RunPlugin(%s)'%uriencode(cmenu))]
-	# 		info={'type':'Video','title':ctitle}
-	# 		if '/serials/' in href or '/tvshow/' in href or '/cartoonserials/' in href:
-	# 			results=filename2match(title)
-	# 			if results:
-	# 				info['tvshowtitle']=ctitle
-	# 				info['title']=title
-	# 				if season=='0':
-	# 					info['season']=results['season']
-	# 				else:
-	# 					info['season']=season
-	# 				info['episode']=results['episode']
-	# 		prop={'IsPlayable':'true'}
-	# 		#AddItem(('   ' if isFolders else '')+('   ' if isSubFolder else '')+title+' '+size,'Play',{'href':href, 'href_dl':href_dl}, info=info, property=prop, cmItems=ContextMenu)
-	#
-	# 		Con =[ser, video_qul, ('   ' if isFolders else '')+('   ' if isSubFolder else '')+title+' '+size, 'Play',{'href':href, 'href_dl':href_dl}, info, prop, ContextMenu]
-	# 		ContentList.append(Con)
-	#
-	# 	video_qul= []
-	# 	for i in ContentList:
-	# 			if i[1] not in video_qul:
-	# 				video_qul.append(i[1])
-	# 				AddFolder(i[1])
-
 	addon.setSetting('quality', '0')
 	addon.setSetting('Content_files_cache', 'false')
-	xbmcplugin.endOfDirectory(plugin_handle)
+	xbmcplugin.endOfDirectory(plugin_handle, cacheToDisc=False)
 
-	if fl_sh:
-		win = xbmcgui.Window(xbmcgui.getCurrentWindowId())
-		ctrl= win.getFocusId()
-		xbmc.executebuiltin("SetFocus("+str(ctrl)+",5)")
+	# if fl_sh:
+	# 	xbmc.sleep(100)
+	# 	win = xbmcgui.Window(xbmcgui.getCurrentWindowId())
+	# 	ctrl= win.getFocusId()
+	# 	xbmc.executebuiltin("SetFocus("+str(ctrl)+",5)")
 
 def Content_files(params):
 	ctitle=urllib.unquote(params['title'])
@@ -1155,7 +1110,7 @@ def download(params):
 
 def filename2match(filename):
 	results={'label':filename}
-	urls=['(.+)s(\d+)e(\d+)','(.+)s(\d+)\.e(\d+)', '(.+) [\[|\(](\d+)[x|-](\d+)[\]|\)]', '(.+) (\d+)[x|-](\d+)', 's(\d+)e(\d+)\.?([^.]+)'] #same in service
+	urls=['(.+)s(\d+)e(\d+)','(.+)s(\d+)\.e(\d+)', '(.+) [\[|\(](\d+)[x|-](\d+)[\]|\)]', '(.+) (\d+)[x|-](\d+)', 's(\d+)e(\d+)\.?([^.]+)']
 	for file in urls:
 		match=re.compile(file, re.I | re.IGNORECASE).findall(filename)
 		if match:
