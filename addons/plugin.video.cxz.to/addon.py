@@ -766,10 +766,11 @@ def Content(params):
 	isBlocked = Soup.find('div', id='file-block-text')!=None
 
 	if fl_sh:
-		try:
-			AddFolder((clRed%'Некоторые файлы заблокированы ' if isBlocked else '')+ 'Альтернативы', 'External_Search', {'plugin':'all', 'command':'Search','search':ctitle.split('/')[0]})
-		except:
-			AddFolder((clRed%'Некоторые файлы заблокированы ' if isBlocked else '')+ 'Альтернативы', 'External_Search', {'plugin':'all', 'command':'Search','search':ctitle.split('/')[0].encode('UTF-8')})
+		if (addon.getSetting('alt_if_block')=='true') or isBlocked:
+			try:
+				AddFolder((clRed%'Некоторые файлы заблокированы ' if isBlocked else '')+ 'Альтернативы', 'External_Search', {'plugin':'all', 'command':'Search','search':ctitle.split('/')[0]})
+			except:
+				AddFolder((clRed%'Некоторые файлы заблокированы ' if isBlocked else '')+ 'Альтернативы', 'External_Search', {'plugin':'all', 'command':'Search','search':ctitle.split('/')[0].encode('UTF-8')})
 		AddItem('_'*30+chr(10)+' ','')
 
 	addon.setSetting('tabfolder','0')
@@ -831,6 +832,7 @@ def Content(params):
 
 	addon.setSetting('quality', '0')
 	addon.setSetting('Content_files_cache', 'false')
+	addon.setSetting('VSFull', 'true' if addon.getSetting('VideoSourceB')=='false' else 'false')
 	xbmcplugin.endOfDirectory(plugin_handle, cacheToDisc=False)
 
 	# if fl_sh:
@@ -879,6 +881,12 @@ def Content_files(params):
 				qSelectTitle += ii+' '
 			AddFolder('Качество: '+qSelectTitle, 'Content_files_refresh', {'max':len(quality_list)})
 
+		if addon.getSetting('VSFull')=='true':
+			vsTitle = clGreen%'Полный '+'Оптимизированный'
+		else:
+			vsTitle = 'Полный '+clGreen%'Оптимизированный'
+		AddFolder('Источник: '+vsTitle, 'Content_files_refresh', {})
+
 		for l in li:
 
 			try:
@@ -898,14 +906,13 @@ def Content_files(params):
 				if a:
 					href= a['href']
 				a= l.find('a', 'b-file-new__link-material-download')
+				only_download = 'only-download' in a['class']
 				href_dl = a['href']
 				size = a.span.string
 			except:
 				continue
 			cmenu ={'mode'  :'download', 'href':href_dl, 'title':title}
-			cmenu1={'mode':'Play', 'href':href, 'href_dl':href_dl, 'VS':'opt'}
-			ContextMenu = [(clAliceblue%('cxz.to Скачать файл'), 'XBMC.RunPlugin(%s)'%uriencode(cmenu)),
-						   (clAliceblue%('cxz.to Смотреть Оптимизированный'), 'XBMC.RunScript(plugin.video.cxz.to, -1, %s)'%urllib.urlencode(cmenu1))]
+			ContextMenu = [(clAliceblue%('cxz.to Скачать файл'), 'XBMC.RunPlugin(%s)'%uriencode(cmenu))]
 
 			info={'type':'Video','title':ctitle}
 			if '/serials/' in href or '/tvshow/' in href or '/cartoonserials/' in href:
@@ -915,17 +922,26 @@ def Content_files(params):
 					info['title']=ctitle
 					info['season']=results['season']
 					info['episode']=results['episode']
-			prop={'IsPlayable':'true'}
-			AddItem(title+' '+size,'Play',{'href':href, 'href_dl':href_dl, 'VS':'full'}, info=info, property=prop, cmItems=ContextMenu)
+
+			prop = {}
+			VSFull = (addon.getSetting('VSFull')=='true')
+			if VSFull or only_download:
+				prop={'IsPlayable':'true'}
+			AddItem(('[only Full] ' if only_download and not VSFull else '')+title+' '+size,'Play',{'href':href, 'href_dl':href_dl, 'only_download':str(only_download)}, info=info, property=prop, cmItems=ContextMenu)
 	xbmcplugin.endOfDirectory(plugin_handle)
 
 def Content_files_refresh(params):
-	cur_quality = int(addon.getSetting('quality'))
-	max = int(params['max'])
-	if cur_quality == max-1:
-		addon.setSetting('quality', '0')
+	try:
+		max = int(params['max'])
+	except:
+		addon.setSetting('VSFull','false' if addon.getSetting('VSFull')=='true' else 'true')
 	else:
-		addon.setSetting('quality', str(cur_quality+1))
+		cur_quality = int(addon.getSetting('quality'))
+
+		if cur_quality == max-1:
+			addon.setSetting('quality', '0')
+		else:
+			addon.setSetting('quality', str(cur_quality+1))
 	xbmc.executebuiltin('Container.Refresh')
 
 
@@ -1053,10 +1069,9 @@ def ADFav(params):
 def Play(params):
 	link    = site_url+urllib.unquote(params['href'])
 	link_dl = site_url+urllib.unquote(params['href_dl'])
-	vs = urllib.unquote(params['VS'])
+	only_download = params['only_download']
 
-	VideoSource =addon.getSetting('VideoSourceB')
-	if (VideoSource=='false')and(vs == 'full'):
+	if addon.getSetting('VSFull')=='true' or only_download == 'True':
 		path = link_dl
 		item = xbmcgui.ListItem(path=path)
 		xbmcplugin.setResolvedUrl(plugin_handle, True, item)
@@ -1090,11 +1105,11 @@ def Play(params):
 				cPickle.dump(pl,F)
 			path = pl[file_id]
 
-			title  = xbmc.getInfoLabel('Listitem.Title')
-			item = xbmcgui.ListItem(title)
-			item.setInfo('video', infoLabels={'title':title})
-			#item.setProperty('mimetype', 'video/flv')
-			xbmc.Player().play(path,item)
+		title  = xbmc.getInfoLabel('Listitem.Title')
+		item = xbmcgui.ListItem(title)
+		item.setInfo('video', infoLabels={'title':title})
+		item.setProperty('mimetype', 'video/flv')
+		xbmc.Player().play(path,item)
 
 
 def download(params):
