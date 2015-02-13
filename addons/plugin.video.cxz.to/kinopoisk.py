@@ -29,6 +29,7 @@ def Search(title, year='', director=''):
 		if jsyear:
 			if jsyear[0]==year:
 				id = js[j]['id']
+				print id
 				return id
 	return 	js['0']['id']
 

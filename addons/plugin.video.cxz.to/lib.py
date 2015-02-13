@@ -1,7 +1,7 @@
 #!/usr/bin/python
 # -*- coding: utf-8 -*-
 
-import urllib, urllib2, cookielib, sys, os
+import urllib, urllib2, cookielib, sys, os,json
 import xbmcplugin, xbmcgui, xbmcaddon, xbmc
 
 addon_name 	= sys.argv[0].replace('plugin://', '')
@@ -38,7 +38,6 @@ def DelCookie():
 		os.remove(cookie_path)
 
 def Get_url(url, headers={}, Post = None, GETparams={}, JSON=False, Proxy=None, Cookie=False, User_Agent= User_Agent):
-
 	h=[]
 	if Proxy:
 		(urllib2.ProxyHandler({'http': Proxy}))
@@ -105,3 +104,25 @@ def AddItem(title, mode='', url={}, isFolder=False, img='', ico='', info={}, pro
 
 def AddFolder(title, mode='', url={}, isFolder=True, img='', ico='', info={}, property={}, cmItems=[]):
 	AddItem(title=title, mode=mode, url=url, isFolder=isFolder, img=img, ico=ico, info=info, property=property, cmItems=cmItems)
+
+class cache():
+	file_name = ''
+	mode = ''
+	def __init__(self, file_name, mode = 'json'):
+		if not os.path.exists(addon_data_path):
+				os.makedirs(addon_data_path)
+		self.file_name = file_name
+		self.mode = mode
+
+	def write(self,data):
+		F = open(addon_data_path+'/'+self.file_name, 'w')
+		json.dump(data, F)
+		F.close()
+
+	def read(self):
+		F = open(addon_data_path+'/'+self.file_name, 'r')
+		data = json.load(F)
+		F.close()
+		return data
+
+

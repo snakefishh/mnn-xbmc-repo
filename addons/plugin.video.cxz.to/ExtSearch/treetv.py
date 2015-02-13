@@ -75,9 +75,7 @@ class Treetv(Plugin):
         else:
             sjson =sjson[0]
 
-        F = open(addon_data_path+'/treetv_playlist', 'w')
-        json.dump(sjson, F)
-        F.close()
+        cache('playlist').write(sjson)
 
         for aitem in aitems:
             ahead = aitem.find('div', 'folder_name')
@@ -90,12 +88,8 @@ class Treetv(Plugin):
 
     def Content2(self,args):
         dfolder = args['dfolder']
-
-        F = open(addon_data_path+'/treetv_playlist', 'r')
-        Data = json.load(F)
-        F.close()
-
-        js_ = json.loads(Data)
+        js_ = cache('playlist').read()
+        js_ = json.loads(js_)
 
         for js in js_[dfolder]:
             data = str(js_[dfolder][js])
@@ -103,10 +97,8 @@ class Treetv(Plugin):
         return True
 
     def Content3(self,args):
-        F = open(addon_data_path+'/treetv_playlist', 'r')
-        Data = json.load(F)
-        F.close()
-        js_ = json.loads(Data)
+        js_ = cache('playlist').read()
+        js_ = json.loads(js_)
 
         dfolder = args['dfolder']
         ql = args['ql']

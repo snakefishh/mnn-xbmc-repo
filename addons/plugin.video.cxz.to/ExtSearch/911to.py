@@ -10,16 +10,16 @@ from BeautifulSoup import BeautifulSoup
 plugin_handle = int(sys.argv[1])
 
 class c911to (Plugin):
-	Name = '911.to Пока не работает'
+	Name = '911.to test'
 
 	def Command(self, args):
 		if (args['plugin'] == self.__class__.__name__)or(args['plugin'] =='all'):
-			#try:
-			run = getattr(self, args['command'])
-			result = run(args)
-			return result
-		#except:
-			#	return False
+			try:
+				run = getattr(self, args['command'])
+				result = run(args)
+				return result
+			except:
+				return False
 		else:
 			return False
 
@@ -68,17 +68,6 @@ class c911to (Plugin):
 
 		Data =Get_url(href,Cookie=True)
 		Soup = BeautifulSoup(Data)
-		Reload = Soup.find('a', {'data-target-name':'PLAY_CARD_EPISODE_LIST'})
-		if Reload:
-			Reload = Reload['data-href']
-			print Reload
-			Data =Get_url('http://911.to'+Reload,Cookie=True)
-			Soup = BeautifulSoup(Data)
-
-
-		# <a data-target-name="PLAY_CARD_EPISODE_LIST" href="#top" data-href="/video/serials/17996-molodezhka/season-1-episode-1"
-		# class="ya-metrics btn btn-small btn-primary btn-thin getPlayer">Смотреть<i class="icon watch-white"></i></a>
-
 
 		reg = re.compile('\d+?:\{size:([1-9,\.]+?),url:"([^"]+)"',re.MULTILINE|re.DOTALL)
 
@@ -110,24 +99,21 @@ class c911to (Plugin):
 				js[season['id']] = js_episode
 				AddFolder(season['id'] ,'External_Search',{'plugin':self.__class__.__name__,'command':'Episodes','season':season['id']})
 
-		F = open(addon_data_path+'/911to_playlist', 'w')
-		json.dump(js, F)
-		F.close()
+		cache('playlist').write(js)
+
 		if '/movies/' in href: self.Qual({'season':'0','episode':'0'})
 		return True
 
 	def Episodes(self,args):
-		F = open(addon_data_path+'/911to_playlist', 'r')
-		cont = json.load(F)
-		F.close()
+		cont = cache('playlist').read()
+
 		for c in sorted(cont[args['season']], key = lambda k:int(re.compile('\d*').findall(k)[0])):
 			AddFolder(c.encode('UTF-8') ,'External_Search',{'plugin':self.__class__.__name__,'command':'Qual','season':args['season'],'episode':c.encode('UTF-8')})
 		return True
 
 	def Qual(self,args):
-		F = open(addon_data_path+'/911to_playlist', 'r')
-		cont = json.load(F)
-		F.close()
+		cont = cache('playlist').read()
+
 		for c in sorted(cont[args['season']][urllib.unquote(args['episode']).decode('UTF-8')], key = lambda k:int(k.replace('p','')),reverse=True):
 			href = cont[args['season']][urllib.unquote(args['episode']).decode('UTF-8')][c]['href']
 			AddFolder(c, 'External_Search',{'plugin':self.__class__.__name__,'command':'Play','href':href})

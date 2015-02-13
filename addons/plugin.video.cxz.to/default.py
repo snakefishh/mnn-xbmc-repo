@@ -19,6 +19,9 @@ def get_params():
 	return param
 
 params = get_params()
+
+#params1 = dict(arg.split("=") for arg in sys.argv[2].split("&"))
+
 try:
 	mode = params['mode']
 	#del params['mode']

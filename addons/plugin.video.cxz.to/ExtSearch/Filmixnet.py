@@ -40,9 +40,7 @@ class Filmixnet(Plugin):
         tp, cont = self.Content(href)
         if not tp:return
 
-        F = open(addon_data_path+'/filmix_playlist', 'w')
-        json.dump(cont, F)
-        F.close()
+        cache('playlist').write(cont)
 
         if len(cont)>1:
             for ple in range(0,len(cont)):
@@ -52,9 +50,7 @@ class Filmixnet(Plugin):
             self.FilmixNet_content2({'le':0})
 
     def FilmixNet_content2(self, args): #Сезон
-        F = open(addon_data_path+'/filmix_playlist', 'r')
-        cont = json.load(F)
-        F.close()
+        cont = cache('playlist').read()
 
         if type(cont[int(args['le'])])==dict:
             for i in cont[int(args['le'])]['playlist']:
@@ -66,9 +62,8 @@ class Filmixnet(Plugin):
     def FilmixNet_content3(self, args): #Серия
         le = urllib.unquote(args['le'])
         le2 = urllib.unquote(args['le2'])
-        F = open(addon_data_path+'/filmix_playlist', 'r')
-        cont = json.load(F)
-        F.close()
+
+        cont = cache('playlist').read()
 
         for i in cont[int(args['le'])]['playlist']:
             if i['comment'].encode('UTF-8')==le2:

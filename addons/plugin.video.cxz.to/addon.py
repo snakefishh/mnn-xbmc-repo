@@ -5,7 +5,6 @@ import urllib, urllib2, re, sys, os, json, datetime, time
 import xbmcplugin, xbmcgui, xbmcaddon, xbmc
 from lib import *
 from BeautifulSoup import BeautifulSoup
-import cPickle
 import SimpleDownloader as downloader
 
 addon_name 	= 'plugin.video.cxz.to'
@@ -227,20 +226,14 @@ def Cat(params):
 				if a['href']<>'#':
 					items[item_title]=a['href']
 			rec['items']=items
-
 			filterjs.append(rec)
-	try:
-		with open(addon_data_path+'/filters','wb') as F:
-			cPickle.dump(filterjs,F)
-	except:
-		if not os.path.exists(addon_data_path):
-				os.makedirs(addon_data_path)
-		with open(addon_data_path+'/filters','wb') as F:
-			cPickle.dump(filterjs,F)
+
+	cache('cache').write(filterjs)
 
 	flTitle = 'Фильтр       : '  + group_selected.encode('UTF-8')
-	AddItem('Сортировка : '+sort_selected.encode('UTF-8'), 'SetSort', {'cathref':cat_href})
-	AddItem(flTitle,'SetFilter', {'cathref':cat_href})
+
+	AddItem('Сортировка : '+sort_selected.encode('UTF-8'), 'SetSort', {'cathref':cat_href}, property={'refresh':'1'})
+	AddItem(flTitle,'SetFilter', {'cathref':cat_href}, property={'refresh':'1'})
 	AddItem('_'*30+chr(10)+' ')
 
 	page = Paginator(Soup,'Cat')
@@ -328,8 +321,8 @@ def SetGroup(params):
 
 	caturl = SiteUrlParse(urllib.unquote(params['cathref']))
 
-	with open(addon_data_path+'/filters','rb') as F:
-			filterjs = cPickle.load(F)
+	filterjs = cache('cache').read()
+
 	for fil in filterjs:
 		if fil['title'].encode('UTF-8')== 'Группы':
 			break
@@ -500,8 +493,8 @@ def Search_in_bd(base_name):
 
 def SetFilter(params):
 	caturl = SiteUrlParse(urllib.unquote(params['cathref']))
-	with open(addon_data_path+'/filters','rb') as F:
-			filterjs = cPickle.load(F)
+
+	filterjs = cache('cache').read()
 
 	dialog = xbmcgui.Dialog()
 
@@ -734,9 +727,8 @@ def Content(params):
 		query['folder']='0'
 		fl_sh = True
 		SData =Get_url(site_url+href, Cookie=True)
-		F = open(addon_data_path+'/cache', 'w')
-		F.write(SData)
-		F.close()
+		cache('cache').write(SData)
+
 		AddFolder('Дополнительно','Content_plus')
 		AddFolder('Похожие материалы','Similar')
 
@@ -858,14 +850,10 @@ def Content_files(params):
 
 		Data =Get_url(url, Cookie=True)
 		if Data:
-			F = open(addon_data_path+'/Content_files_cache', 'w')
-			F.write(Data)
-			F.close()
+			cache('cache').write(Data)
 			addon.setSetting('Content_files_cache', 'true')
 	else:
-		F = open(addon_data_path+'/Content_files_cache', 'r')
-		Data = F.read()
-		F.close()
+		Data = cache('cache').read()
 
 	Soup = BeautifulSoup(Data)
 	li = Soup.findAll('li', 'b-file-new')
@@ -947,10 +935,8 @@ def Content_files_refresh(params):
 
 def Content_plus(params):
 	import kinopoisk
+	Data = cache('cache').read()
 
-	F = open(addon_data_path+'/cache', 'r')
-	Data = F.read()
-	F.close()
 	Soup = BeautifulSoup(Data)
 
 	try:
@@ -1013,9 +999,7 @@ def GetPersonFav(params):
 	pass
 
 def Similar(params):
-	F = open(addon_data_path+'/cache', 'r')
-	Data = F.read()
-	F.close()
+	Data = cache('cache').read()
 
 	Soup = BeautifulSoup(Data)
 	sim = Soup.find('div', 'b-similar')
@@ -1074,19 +1058,16 @@ def Play(params):
 	if addon.getSetting('VSFull')=='true' or only_download == 'True':
 		path = link_dl
 		item = xbmcgui.ListItem(path=path)
+		#item.setProperty('mimetype', 'video/flv')
 		xbmcplugin.setResolvedUrl(plugin_handle, True, item)
 	else:
-
 		try:
-			with open(addon_data_path+'/playlist','rb') as F:
-				LocalPL = cPickle.load(F)
+			LocalPL = cache('playlist_cxz').read()
 		except:
-			if not os.path.exists(os.path.dirname(addon_data_path)):
-					os.makedirs(os.path.dirname(addon_data_path))
 			LocalPL={}
 
-		file_id = link.split('=')[1]
 
+		file_id = link.split('=')[1]
 		try:
 			path = LocalPL[file_id]
 		except:
@@ -1101,8 +1082,9 @@ def Play(params):
 			pl={}
 			for i in urls:
 				pl[i[1]]= site_url+i[0]
-			with open(addon_data_path+'/playlist','wb') as F:
-				cPickle.dump(pl,F)
+
+			cache('playlist_cxz').write(pl)
+
 			path = pl[file_id]
 
 		title  = xbmc.getInfoLabel('Listitem.Title')
