@@ -1088,10 +1088,10 @@ def Play(params):
 			path = pl[file_id]
 
 		title  = xbmc.getInfoLabel('Listitem.Title')
-		item = xbmcgui.ListItem(title)
+		item = xbmcgui.ListItem(title, path=path)
 		item.setInfo('video', infoLabels={'title':title})
 		item.setProperty('mimetype', 'video/flv')
-		xbmc.Player().play(path,item)
+		xbmcplugin.setResolvedUrl(plugin_handle, True, item)
 
 
 def download(params):
