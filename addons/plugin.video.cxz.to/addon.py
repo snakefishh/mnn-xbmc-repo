@@ -913,8 +913,8 @@ def Content_files(params):
 
 			prop = {}
 			VSFull = (addon.getSetting('VSFull')=='true')
-			if VSFull or only_download:
-				prop={'IsPlayable':'true'}
+			#if VSFull or only_download:
+			prop={'IsPlayable':'true'}
 			AddItem(('[only Full] ' if only_download and not VSFull else '')+title+' '+size,'Play',{'href':href, 'href_dl':href_dl, 'only_download':str(only_download)}, info=info, property=prop, cmItems=ContextMenu)
 	xbmcplugin.endOfDirectory(plugin_handle)
 
