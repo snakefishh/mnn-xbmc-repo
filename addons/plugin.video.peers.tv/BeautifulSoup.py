@@ -730,7 +730,7 @@ class Tag(PageElement):
                     if '"' in val:
                         fmt = "%s='%s'"
                         if "'" in val:
-                            # TODO: replace with apos when
+
                             # appropriate.
                             val = val.replace("'", "&squot;")
 
@@ -1071,7 +1071,7 @@ class BeautifulStoneSoup(Tag, SGMLParser):
     HTML_ENTITIES = "html"
     XML_ENTITIES = "xml"
     XHTML_ENTITIES = "xhtml"
-    # TODO: This only exists for backwards-compatibility
+
     ALL_ENTITIES = XHTML_ENTITIES
 
     # Used when determining whether a text node is all whitespace and
@@ -1178,7 +1178,7 @@ class BeautifulStoneSoup(Tag, SGMLParser):
                     self.markupMassage = self.MARKUP_MASSAGE
                 for fix, m in self.markupMassage:
                     markup = fix.sub(m, markup)
-                # TODO: We get rid of markupMassage so that the
+
                 # soup object can be deepcopied later on. Some
                 # Python installations can't copy regexes. If anyone
                 # was relying on the existence of markupMassage, this
@@ -1416,7 +1416,7 @@ class BeautifulStoneSoup(Tag, SGMLParser):
 
         if not data and self.convertHTMLEntities and \
             not self.XML_ENTITIES_TO_SPECIAL_CHARS.get(ref):
-                # TODO: We've got a problem here. We're told this is
+
                 # an entity reference, but it's not an XML entity
                 # reference or an HTML entity reference. Nonetheless,
                 # the logical thing to do is to pass it through as an
