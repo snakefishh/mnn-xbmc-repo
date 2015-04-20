@@ -69,7 +69,8 @@ def Live(params):
 	js_str = re.compile('({"data": ?\[.+?\]})').findall(str(scr.encode('UTF-8')))[0]
 	js = json.loads(js_str)
 	UTC_MCS=re.compile('UTC_MCS ?= ?(\d{16})').findall(Data)[0]
-	now = datetime.datetime.utcfromtimestamp(((int(UTC_MCS)//1000)+14400000)//1000)
+	
+	now = datetime.datetime.utcfromtimestamp(((int(UTC_MCS)//1000)+10800000)//1000)
 	for i in js['data']:				
 		try:
 			pub_date = datetime.datetime.strptime(i['pub_date'], '%Y-%m-%dT%H:%M:%SZ')	
@@ -97,7 +98,10 @@ def News(params):
 	Data  = Get_url('http://www.onlinetv.ru/')
 	if not Data:return(1)
 	soup = BeautifulSoup(Data)
-	url=soup('a', id="menu_news")[0]['href']
+	try:
+		url=soup('a', id="menu_news")[0]['href']
+	except:
+		return(1)
 	if not url: return(1)
 	PlayDlg({'url':urllib.quote(url), 'title':'Новости Дня', 'redirect':'false'})
 	
@@ -108,7 +112,10 @@ def Projects(params):
 	li = soup('li', 'top_submenu-list_item')
 	for i in range(0,len(li)):
 		soup2 = BeautifulSoup(str(li[i]))
-		project_id = re.compile('/project/(.+?)/').findall(str(soup2('a')[0]['href']))[0]
+		try:
+			project_id = re.compile('/project/(.+?)/').findall(str(soup2('a')[0]['href']))[0]
+		except:
+			continue
 		top_submenu_info = soup.find('div', 'top_submenu-info_item item'+project_id)
 		img = top_submenu_info.find('img', src=True)['src']
 		desc = top_submenu_info.find('div', 'top_submenu-description').a.string.encode('UTF-8')
@@ -240,5 +247,5 @@ def Play(params):
 
 	item = xbmcgui.ListItem(title, iconImage = '', thumbnailImage = '')
 	item.setInfo(type="Video", infoLabels={"Title":title})
-	
+
 	xbmc.Player().play(link, item)
