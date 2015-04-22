@@ -1,8 +1,0 @@
-﻿<?xml version="1.0" encoding="utf-8" standalone="yes"?>
-
-<settings>
-	<setting id="novideo"          label="Не показывать сюжеты без Видео" type="bool" default="true" />
-	<setting type="sep" />
-	<setting id="live_quality"     label="Качество Эфир"  type="labelenum"  values="Спрашивать|Низкое качество|Среднее качество|Высокое качество"  default="Спрашивать" />
-	<setting id="archive_quality"  label="Качество Архив" type="labelenum"  values="Спрашивать|360p|480p|720p"  default="Спрашивать" />
-</settings>

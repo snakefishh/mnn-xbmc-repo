@@ -1,5 +1,0 @@
-﻿<?xml version="1.0" encoding="utf-8" standalone="yes"?>
-<settings>
-<setting label="Очистить Базу Данных" type="action" action="RunScript(plugin.video.videomore.ru,-1,mode=clear_db)" />
-</settings>
- 
