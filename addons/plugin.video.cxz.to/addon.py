@@ -867,13 +867,13 @@ def Content_files(params):
 				else:
 					ii = quality_list[i]
 				qSelectTitle += ii+' '
-			AddFolder('Качество: '+qSelectTitle, 'Content_files_refresh', {'max':len(quality_list)})
+			AddItem('Качество: '+qSelectTitle, 'Content_files_refresh', {'max':len(quality_list)})
 
 		if addon.getSetting('VSFull')=='true':
 			vsTitle = clGreen%'Полный '+'Оптимизированный'
 		else:
 			vsTitle = 'Полный '+clGreen%'Оптимизированный'
-		AddFolder('Источник: '+vsTitle, 'Content_files_refresh', {})
+		AddItem('Источник: '+vsTitle, 'Content_files_refresh', {})
 
 		for l in li:
 
@@ -902,6 +902,8 @@ def Content_files(params):
 			cmenu ={'mode'  :'download', 'href':href_dl, 'title':title}
 			ContextMenu = [(clAliceblue%('cxz.to Скачать файл'), 'XBMC.RunPlugin(%s)'%uriencode(cmenu))]
 
+
+			ctitle = ctitle.strip()
 			info={'type':'Video','title':ctitle}
 			if '/serials/' in href or '/tvshow/' in href or '/cartoonserials/' in href:
 				results=filename2match(title)
@@ -1061,13 +1063,13 @@ def Play(params):
 		#item.setProperty('mimetype', 'video/flv')
 		xbmcplugin.setResolvedUrl(plugin_handle, True, item)
 	else:
-		try:
-			LocalPL = cache('playlist_cxz').read()
-		except:
-			LocalPL={}
+		LocalPL={}
+		file_id = re.compile('file=(\d+)').findall(link)
+		if file_id:
+			file_id = file_id[0]
+		else:
+			file_id = None
 
-
-		file_id = link.split('=')[1]
 		try:
 			path = LocalPL[file_id]
 		except:
@@ -1083,14 +1085,12 @@ def Play(params):
 			for i in urls:
 				pl[i[1]]= site_url+i[0]
 
-			cache('playlist_cxz').write(pl)
-
 			path = pl[file_id]
 
-		title  = xbmc.getInfoLabel('Listitem.Title')
-		item = xbmcgui.ListItem(title, path=path)
-		item.setInfo('video', infoLabels={'title':title})
-		item.setProperty('mimetype', 'video/flv')
+		#title  = xbmc.getInfoLabel('Listitem.Title')
+		item = xbmcgui.ListItem(path=path)
+		#item.setInfo('video', infoLabels={'title':title})
+		#item.setProperty('mimetype', 'video/flv')
 		xbmcplugin.setResolvedUrl(plugin_handle, True, item)
 
 
