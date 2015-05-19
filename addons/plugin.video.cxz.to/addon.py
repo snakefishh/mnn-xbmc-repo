@@ -261,7 +261,12 @@ def CreateCatItem(pop, mSerials=False):
 	tmp = pop.findAll('span', 'b-poster-detail__field')
 	field = tmp[0].string
 	country = field.split(u'●')[1].strip()
-	year  =re.compile('(\d{4})').findall(field)[0]
+	year  =re.compile('(\d{4})').findall(field)
+	if year:
+		year  =year[0]
+	else:
+		year  =''
+
 	cast = tmp[1].string
 	if cast:
 		cast = cast.split(',')
