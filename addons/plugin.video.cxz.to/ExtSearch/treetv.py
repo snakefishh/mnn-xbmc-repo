@@ -5,6 +5,7 @@ from ExtSearch import Plugin
 import urllib, urllib2, re, sys, os, json, datetime, time
 import xbmcplugin, xbmcgui, xbmcaddon, xbmc
 from lib import *
+from cache import CacheToFile
 from BeautifulSoup import BeautifulSoup
 plugin_handle = int(sys.argv[1])
 
@@ -75,7 +76,7 @@ class Treetv(Plugin):
         else:
             sjson =sjson[0]
 
-        cache('playlist').write(sjson)
+        CacheToFile('playlist_ext').write(sjson)
 
         for aitem in aitems:
             ahead = aitem.find('div', 'folder_name')
@@ -88,7 +89,7 @@ class Treetv(Plugin):
 
     def Content2(self,args):
         dfolder = args['dfolder']
-        js_ = cache('playlist').read()
+        js_ = CacheToFile('playlist_ext').read()
         js_ = json.loads(js_)
 
         for js in js_[dfolder]:
@@ -97,7 +98,7 @@ class Treetv(Plugin):
         return True
 
     def Content3(self,args):
-        js_ = cache('playlist').read()
+        js_ = CacheToFile('playlist_ext').read()
         js_ = json.loads(js_)
 
         dfolder = args['dfolder']

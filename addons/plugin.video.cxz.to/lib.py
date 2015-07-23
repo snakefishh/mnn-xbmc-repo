@@ -1,16 +1,9 @@
 #!/usr/bin/python
 # -*- coding: utf-8 -*-
 
-import urllib, urllib2, cookielib, sys, os,json
-import xbmcplugin, xbmcgui, xbmcaddon, xbmc
-
-addon_name 	= sys.argv[0].replace('plugin://', '')
-addon_data_path = xbmc.translatePath(os.path.join("special://profile/addon_data", addon_name))
-addon_path = xbmc.translatePath(os.path.join("special://home/addons", addon_name))
-if (sys.platform == 'win32') or (sys.platform == 'win64'):
-	addon_data_path = addon_data_path.decode('utf-8')
-	addon_path      = addon_path
-addon_ico = addon_path+'icon.png'
+import urllib, urllib2, cookielib, json, re
+from var import *
+import xbmcplugin, xbmcgui
 
 cookie_path =addon_data_path+'cookie'
 
@@ -24,19 +17,17 @@ clRed        = '[COLOR FFFF0000]%s[/COLOR]'
 clPGreen     = '[COLOR FF98FB98]%s[/COLOR]'
 
 
-
-User_Agent = 'Mozilla/5.0 (Windows NT 6.1; WOW64; rv:31.0) Gecko/20100101 Firefox/31.0'
-
 def xbmcMessage(mess, tm, h=addon_name):
 	xbmc.executebuiltin('XBMC.Notification("%s", "%s", %s, "%s")' % (h, mess, tm, addon_ico))
 
 def uriencode(p):
-	 return '%s?%s' % (sys.argv[0], urllib.urlencode(p))
+	return '%s?%s' % (sys.argv[0], urllib.urlencode(p))
 
 def DelCookie():
 	if os.path.exists(cookie_path):
 		os.remove(cookie_path)
 
+#TODO кеширование страниц?
 def Get_url(url, headers={}, Post = None, GETparams={}, JSON=False, Proxy=None, Cookie=False, User_Agent= User_Agent):
 	h=[]
 	if Proxy:
@@ -72,7 +63,7 @@ def Get_url(url, headers={}, Post = None, GETparams={}, JSON=False, Proxy=None, 
 			Data = zlib.decompressobj(16 + zlib.MAX_WBITS).decompress(Data)
 	except Exception, e:
 		xbmc.log('['+addon_name+'] %s' % e, xbmc.LOGERROR)
-		xbmcgui.Dialog().ok(' ОШИБКА', str(e))		
+		#xbmcgui.Dialog().ok(' ОШИБКА', str(e))
 		return None		
 	response.close()	
 	if JSON:
@@ -105,24 +96,12 @@ def AddItem(title, mode='', url={}, isFolder=False, img='', ico='', info={}, pro
 def AddFolder(title, mode='', url={}, isFolder=True, img='', ico='', info={}, property={}, cmItems=[]):
 	AddItem(title=title, mode=mode, url=url, isFolder=isFolder, img=img, ico=ico, info=info, property=property, cmItems=cmItems)
 
-class cache():
-	file_name = ''
-	mode = ''
-	def __init__(self, file_name, mode = 'json'):
-		if not os.path.exists(addon_data_path):
-				os.makedirs(addon_data_path)
-		self.file_name = file_name
-		self.mode = mode
-
-	def write(self,data):
-		F = open(addon_data_path+'/'+self.file_name, 'w')
-		json.dump(data, F)
-		F.close()
-
-	def read(self):
-		F = open(addon_data_path+'/'+self.file_name, 'r')
-		data = json.load(F)
-		F.close()
-		return data
-
-
+def filename2match(filename):
+	results={'label':filename}
+	urls=['(.+)s(\d+)e(\d+)','(.+)s(\d+)\.e(\d+)', '(.+) [\[|\(](\d+)[x|-](\d+)[\]|\)]', '(.+) (\d+)[x|-](\d+)', 's(\d+)e(\d+)\.?([^.]+)']
+	for file in urls:
+		match=re.compile(file, re.I | re.IGNORECASE).findall(filename)
+		if match:
+			results['showtitle'], results['season'], results['episode']=match[0]
+			results['showtitle']=results['showtitle'].replace('.',' ').replace('_',' ').strip().replace('The Daily Show','The Daily Show With Jon Stewart')
+			return results

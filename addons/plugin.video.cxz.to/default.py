@@ -1,6 +1,7 @@
 #!/usr/bin/python
 # -*- coding: utf-8 -*-
 from addon import *
+
 def get_params():
 	param=[]
 	paramstring=sys.argv[2]
@@ -27,7 +28,7 @@ try:
 	#del params['mode']
 except:
 	mode = 'start'
-try: 
+try:
 	func = globals()[mode]
 except:
 	func = None

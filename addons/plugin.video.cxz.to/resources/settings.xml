@@ -10,5 +10,10 @@
     <setting id="alt_if_block"   label="Всегда показывать <Альтернативы>" type="bool" default="true" />
     <setting type="sep"/>
     <setting id="item_format"  label="Настройка отображения списка" type="text" default="/s[S] /s/t /y ● /c (/q [COLOR 80008000]↑/vp[/COLOR] [COLOR 80FF0000]↓/vn[/COLOR])" />
-    <setting label="Шаблоны"   type="action" option="close" action="RunScript($CWD/default.py, itemformatsettings)" />
+    <setting label="Шаблоны"   type="action" option="close" action="RunScript($CWD/settings.py, itemformatsettings)" />
+    <setting type="sep"/>
+    <setting id="short_link"  label="Использовать укороченные ссылки (test)" type="bool" default="false" />
+    <setting type="sep"/>
+    <setting id="scrab_meta"   label="Получать Метаданные (Test)" type="bool" default="false" />
+    <setting label="Перезапустить Сервис"   type="action" option="close" action="RunScript($CWD/service.py)" />
 </settings>

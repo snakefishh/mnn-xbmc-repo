@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-<addon id="plugin.video.cxz.to"
-       name="cxz.to"
-       version="0.1.6.5"
+<addon id="plugin.video.cxz.to.dev"
+       name="cxz.to (dev)"
+       version="0.2.0.0"
        provider-name="MazurokNN">
   <requires>
     <import addon="xbmc.python" version="2.1.0"/>
@@ -10,7 +10,8 @@
   <extension point="xbmc.python.pluginsource"
             library="default.py">
         <provides>video</provides>
-  </extension>	
+  </extension>
+  <extension point="xbmc.service" library="service.py" start="login" />
   <extension point="xbmc.addon.metadata">
     <platform>all</platform>
     <summary></summary>

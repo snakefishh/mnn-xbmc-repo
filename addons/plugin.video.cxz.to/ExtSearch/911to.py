@@ -5,6 +5,7 @@ from ExtSearch import Plugin
 import urllib, urllib2, re, sys, os, json, datetime, time
 import xbmcplugin, xbmcgui, xbmcaddon, xbmc
 from lib import *
+from cache import CacheToFile
 from BeautifulSoup import BeautifulSoup
 
 plugin_handle = int(sys.argv[1])
@@ -13,6 +14,7 @@ class c911to (Plugin):
 	Name = '911.to test'
 
 	def Command(self, args):
+		#return False
 		if (args['plugin'] == self.__class__.__name__)or(args['plugin'] =='all'):
 			try:
 				run = getattr(self, args['command'])
@@ -99,20 +101,20 @@ class c911to (Plugin):
 				js[season['id']] = js_episode
 				AddFolder(season['id'] ,'External_Search',{'plugin':self.__class__.__name__,'command':'Episodes','season':season['id']})
 
-		cache('playlist').write(js)
+		('playlist_ext').write(js)
 
 		if '/movies/' in href: self.Qual({'season':'0','episode':'0'})
 		return True
 
 	def Episodes(self,args):
-		cont = cache('playlist').read()
+		cont =CacheToFile('playlist_ext').read()
 
 		for c in sorted(cont[args['season']], key = lambda k:int(re.compile('\d*').findall(k)[0])):
 			AddFolder(c.encode('UTF-8') ,'External_Search',{'plugin':self.__class__.__name__,'command':'Qual','season':args['season'],'episode':c.encode('UTF-8')})
 		return True
 
 	def Qual(self,args):
-		cont = cache('playlist').read()
+		cont = CacheToFile('playlist_ext').read()
 
 		for c in sorted(cont[args['season']][urllib.unquote(args['episode']).decode('UTF-8')], key = lambda k:int(k.replace('p','')),reverse=True):
 			href = cont[args['season']][urllib.unquote(args['episode']).decode('UTF-8')][c]['href']

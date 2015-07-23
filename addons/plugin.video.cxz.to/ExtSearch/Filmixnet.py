@@ -5,6 +5,7 @@ from ExtSearch import Plugin
 import urllib, urllib2, re, sys, os, json, datetime, time
 import xbmcplugin, xbmcgui, xbmcaddon, xbmc
 from lib import *
+from cache import CacheToFile
 from BeautifulSoup import BeautifulSoup
 
 plugin_handle = int(sys.argv[1])
@@ -40,7 +41,7 @@ class Filmixnet(Plugin):
         tp, cont = self.Content(href)
         if not tp:return
 
-        cache('playlist').write(cont)
+        CacheToFile('playlist_ext').write(cont)
 
         if len(cont)>1:
             for ple in range(0,len(cont)):
@@ -50,7 +51,7 @@ class Filmixnet(Plugin):
             self.FilmixNet_content2({'le':0})
 
     def FilmixNet_content2(self, args): #Сезон
-        cont = cache('playlist').read()
+        cont =CacheToFile('playlist_ext').read()
 
         if type(cont[int(args['le'])])==dict:
             for i in cont[int(args['le'])]['playlist']:
@@ -63,7 +64,7 @@ class Filmixnet(Plugin):
         le = urllib.unquote(args['le'])
         le2 = urllib.unquote(args['le2'])
 
-        cont = cache('playlist').read()
+        cont = CacheToFile('playlist_ext').read()
 
         for i in cont[int(args['le'])]['playlist']:
             if i['comment'].encode('UTF-8')==le2:
