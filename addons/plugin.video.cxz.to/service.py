@@ -66,6 +66,7 @@ class Service(xbmc.Monitor):
 			xbmc.sleep(500)
 
 	def onNotification(self,sender,method,data):
+		return
 		if sender!=addon_name:return
 
 		if method == 'Other.scrapper':

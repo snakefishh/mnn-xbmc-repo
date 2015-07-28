@@ -10,6 +10,9 @@ from var import *
 
 from sqlite3 import dbapi2 as sqlite
 
+#TODO: pickle ошибка с рекурсией перейти на cPickle
+sys.setrecursionlimit(4000)
+
 rtrCache_lock = threading.RLock()
 
 class CacheToDb:
