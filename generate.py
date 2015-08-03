@@ -11,8 +11,8 @@ class Generator:
     """
     def __init__( self ):
         # generate file
-        #self._generate_addons_file()
-        #self._generate_md5_file()
+        self._generate_addons_file()
+        self._generate_md5_file()
         self._generate_zip()
         
     def _generate_addons_file( self ):
@@ -72,13 +72,9 @@ class Generator:
 
     def _generate_zip( self ):
         import subprocess as sp
-
-
-        addons = []
         for dirname in os.listdir('./'):
             if os.path.isdir(dirname)and(dirname[0]!='.'):
                 print dirname
-                #sp.check_call('C:\Program Files\7-Zip\7z.exe a -tzip '+dirname+'/'+dirname+'.zip '+dirname)
                 sp.check_call('7z a -tzip '+dirname+'/'+dirname+'.zip '+dirname)
 
 
