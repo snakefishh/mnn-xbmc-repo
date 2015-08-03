@@ -1,7 +1,7 @@
 #!/usr/bin/python
 """ addons.xml generator """
 
-import os, md5
+import os, md5, re
 
 class Generator:
     """
@@ -74,10 +74,24 @@ class Generator:
         import subprocess as sp
         for dirname in os.listdir('./'):
             if os.path.isdir(dirname)and(dirname[0]!='.'):
-                print dirname
-                sp.check_call('7z a -tzip '+dirname+'/'+dirname+'.zip '+dirname)
+
+
+                xml_path = os.path.join( dirname, "addon.xml" )
+                if os.path.exists(xml_path):
+                    xml = open( xml_path, "r" ).read()
+                    addon_id = re.compile('<addon id=([^>]+)').findall(xml)
+                    if not addon_id:
+                        continue
+                    ver = re.compile('version="([^"]+)').findall(addon_id[0])
+                    if not ver:
+                        continue
+                    print dirname
+                    print ver
+                    sp.check_call('7z a -tzip _zip/'+dirname+'/'+dirname+'-'+ver[0]+'.zip '+dirname)
 
 
 if ( __name__ == "__main__" ):
     # start
     Generator()
+    raw_input()
+
