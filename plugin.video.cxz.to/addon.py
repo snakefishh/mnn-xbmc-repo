@@ -371,14 +371,40 @@ def Play(params):
 
 	link    = site_url+urllib.unquote(params['href'])
 	link_dl = site_url+urllib.unquote(params['href_dl'])
-	only_download = params['only_download']
+	
+	#################################################
 
+	import 	httplib
+	class RedirectH(urllib2.HTTPRedirectHandler):
+		def http_error_301(self, req, fp, code, msg, headers): 
+			result = urllib2.HTTPRedirectHandler.http_error_301(self, req, fp, code, msg, headers)
+			result.status = code
+			return result
+
+		def http_error_302(self, req, fp, code, msg, headers):   
+			result = urllib2.HTTPRedirectHandler.http_error_302(self, req, fp, code, msg, headers)
+			result.status = code			
+			return result
+	
+	request = urllib2.Request(link_dl)
+	
+	opener = urllib2.build_opener(RedirectH())
+	f = opener.open(request)
+
+	link_dl = f.url
+
+	#################################################
+	
+	only_download = params['only_download']
 
 	if addon.getSetting('VSFull')=='true' or only_download == 'True':
 		path = link_dl
+		
+		
 		item = xbmcgui.ListItem(path=path)
 		#item.setProperty('mimetype', 'video/flv')
-		xbmcplugin.setResolvedUrl(plugin_handle, True, item)
+		xbmcplugin.setResolvedUrl(plugin_handle, True, item)	
+	
 	else:
 		try:
 			LocalPL = CacheToFile('playlist_cxz').read()

@@ -17,4 +17,4 @@ try:
 except:
 	pass
 User_Agent = 'Mozilla/5.0 (Windows NT 6.1; WOW64; rv:31.0) Gecko/20100101 Firefox/31.0'
-site_url='http://cxz.to'
+site_url='http://cxz.to.'

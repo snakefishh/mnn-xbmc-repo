@@ -9,7 +9,8 @@ from cache import CacheToDb
 class cxz():
 
 	def __init__(self, AutErrorMessage = False):
-		self.site_url='http://cxz.to'
+		#self.site_url='http://cxz.to'
+		self.site_url=site_url
 		self.login = False
 		self.AutErrorMessage = AutErrorMessage
 		self.previous_link = None
@@ -386,7 +387,8 @@ class cxz():
 
 	def add_to_favorite(self, href, mode, mode2):
 		if mode2=='add':
-			url = 'http://cxz.to/item/user_votes/'
+			#url = 'http://cxz.to/item/user_votes/'
+			url = site_url+'/item/user_votes/'
 			s = href.split('/')[-1]
 			s = s.split('-')[0]
 			url = url+s
