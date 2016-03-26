@@ -90,8 +90,10 @@ class cxz():
 		url=self.site_url+href+'?ajax&folder='
 		cache = CacheToDb('fileManager.db', 0.1)
 		result = cache.get(url+folder, '')
+
 		if not result:
 			Data =Get_url(url+folder, Cookie=True)
+
 			Soup = BeautifulSoup(Data)
 			isBlocked = Soup.find('div', id='file-block-text')!=None
 			ul = Soup.find('ul', recursive=False)
@@ -189,7 +191,8 @@ class cxz():
 		for pop in poster_detail:
 			cxzInfoItem ={}
 			cxzInfoItem['href'] = pop['href']
-			cxzInfoItem['img']   = pop.find('img' ,src=True)['src']
+			cxzInfoItem['img']   = 'http:'+pop.find('img' ,src=True)['src']
+
 			cxzInfoItem['imgup'] = cxzInfoItem['img'].replace('/6/', '/1/')
 			cxzInfoItem['title'] = pop.find('span', 'b-poster-detail__title').string
 			tmp = pop.findAll('span', 'b-poster-detail__field')
@@ -240,7 +243,7 @@ class cxz():
 			else:
 				SearchInfoItem['title'] = re.sub('\(\d{4}[\)-]+.*','',SearchInfoItem['title'])
 
-			SearchInfoItem['img'] = a.find('span', 'b-search-page__results-item-image').img['src']
+			SearchInfoItem['img'] = 'http:'+a.find('span', 'b-search-page__results-item-image').img['src']
 			SearchInfoItem['imgup'] = SearchInfoItem['img'].replace('/13/', '/1/')
 			plot = a.find('span', 'b-search-page__results-item-description')
 
@@ -360,17 +363,18 @@ class cxz():
 		Data = re.sub('</?p[^>]*>','teg_p',Data)
 
 		Soup = BeautifulSoup(Data,convertEntities=BeautifulSoup.HTML_ENTITIES)
-		tega = Soup.findAll('a')
+		tega = Soup.findAll('a', 'm-video')
+
 		result['items'] = []
 		for a in tega:
 			item = {}
 			item['href'] = a['href']
-			item['img']  = re.compile("url\s*\('(.+?)'\)").findall(a['style'])[0]
+			item['img']  = 'http:'+ re.compile("url\s*\('(.+?)'\)").findall(a['style'])[0]
 			item['imgup'] = item['img'].replace('/13/', '/1/')
 			item['country'] =''
-			title= a.find('span').string
+			title= a.find('b', 'subject-link')
+			title = title.span.string
 			ser_parse=filename2match(title)
-
 			year = re.compile('\((\d{4})[\)-]+',re.UNICODE).findall(title)
 			if year:
 				item['year'] = year[0]

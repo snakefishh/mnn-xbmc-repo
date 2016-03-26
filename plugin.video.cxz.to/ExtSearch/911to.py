@@ -14,8 +14,10 @@ class c911to (Plugin):
 	Name = '911.to test'
 
 	def Command(self, args):
-		#return False
+		return False #Отключен
 		if (args['plugin'] == self.__class__.__name__)or(args['plugin'] =='all'):
+
+
 			try:
 				run = getattr(self, args['command'])
 				result = run(args)

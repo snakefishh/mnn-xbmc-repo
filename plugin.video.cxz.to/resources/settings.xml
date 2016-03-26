@@ -1,19 +1,25 @@
 ﻿<?xml version="1.0" encoding="utf-8" standalone="yes"?>
 <settings>
-    <setting id="User"         label="Логин"         type="text" default="" />
-	<setting id="password"     label="Пароль"        type="text" option="hidden" default="" />
-    <setting type="sep" />
-    <setting id="DownloadDir"  label="Путь Для Загрузки" type="folder" />
-    <setting type="sep" />
-    <setting id="VideoSourceB"  label="Предпочитать Оптимизированный Источник Видео" type="bool" default="false" />
-    <setting id="categorize"   label="Избранное: разбивать на категории" type="bool" default="true" />
-    <setting id="alt_if_block"   label="Всегда показывать <Альтернативы>" type="bool" default="true" />
-    <setting type="sep"/>
-    <setting id="item_format"  label="Настройка отображения списка" type="text" default="/s[S] /s/t /y ● /c (/q [COLOR 80008000]↑/vp[/COLOR] [COLOR 80FF0000]↓/vn[/COLOR])" />
-    <setting label="Шаблоны"   type="action" option="close" action="RunScript($CWD/settings.py, itemformatsettings)" />
-    <setting type="sep"/>
-    <setting id="short_link"  label="Использовать укороченные ссылки (test)" type="bool" default="false" />
-    <setting type="sep"/>
-    <setting id="scrab_meta"   label="Получать Метаданные (Test)" type="bool" default="false" />
-    <setting label="Перезапустить Сервис"   type="action" option="close" action="RunScript($CWD/service.py)" />
+    <category label="Общие">
+        <setting id="User"         label="Логин"         type="text" default="" />
+        <setting id="password"     label="Пароль"        type="text" option="hidden" default="" />
+        <setting type="sep" />
+        <setting id="DownloadDir"  label="Путь Для Загрузки" type="folder" />
+        <setting type="sep" />
+        <setting id="VideoSourceB"  label="Предпочитать Оптимизированный Источник Видео" type="bool" default="false" />
+        <setting id="categorize"   label="Избранное: разбивать на категории" type="bool" default="true" />
+        <setting id="alt_if_block"   label="Всегда показывать <Альтернативы>" type="bool" default="true" />
+        <setting type="sep"/>
+        <setting id="item_format"  label="Настройка отображения списка" type="text" default="/s[S] /s/t /y ● /c (/q [COLOR 80008000]↑/vp[/COLOR] [COLOR 80FF0000]↓/vn[/COLOR])" />
+        <setting label="Шаблоны"   type="action" option="close" action="RunScript($CWD/settings.py, itemformatsettings)" />
+        <setting type="sep"/>
+        <setting id="short_link"  label="Использовать укороченные ссылки (test)" type="bool" default="false" />
+        <setting type="sep"/>
+        <setting id="scrab_meta"   label="Получать Метаданные (Test)" type="bool" default="false" />
+        <setting label="Перезапустить Сервис"   type="action" option="close" action="RunScript($CWD/service.py)" />
+    </category>
+
+    <category label="Блокировки">
+		<setting id="noblock" label="изменить URL" type="labelenum" values="No|http://cxz.to.|http://cxz.to.fineseven.ru" default="http://cxz.to." />
+	</category>
 </settings>
