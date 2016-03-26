@@ -113,7 +113,6 @@ def schedule(params):
 	if not program_id:
 		url_ = 'https://api.tvrain.ru/api_v2/schedule/2015-01-26'
 		Data = Get_url(url_, Headers, JSON=True)
-		print Data
 		for i in Data:
 			str_dt = re.match('^.{3}, \d\d .{3} \d\d \d\d:\d\d:\d\d', i['date_start']).group(0) #Fri, 12 Sep 14 06:00:00
 			dt = datetime.datetime.fromtimestamp(time.mktime(time.strptime(str_dt, '%a, %d %b %y %H:%M:%S')))
@@ -123,7 +122,6 @@ def schedule(params):
 		url_ = 'https://api.tvrain.ru/api_v2/programs/%s/articles/'%(program_id)
 		date_start =urllib.unquote_plus(params['date_start'])
 		Data = Get_url(url_, Headers, JSON=True)
-		print Data
 		for i in Data['elements']:
 			#if i['date_active_start']==params['date_start']:
 			print '====='
@@ -223,6 +221,7 @@ def programid(params):
 	Headers_['X-Result-Define-Pagination'] = '%s/20'%(page)#номер страницы / элементов в странице]
 	url_ = 'https://api.tvrain.ru/api_v2/programs/%s/articles/'%(params['id'])
 	Data = Get_url(url_, Headers_, JSON=True)
+
 	xbmc.log('[%s] In programid %s, url_' %(_addon_name, url_), xbmc.LOGERROR)
 
 	current_page = Data['current_page']
@@ -289,6 +288,11 @@ def play(params):
 	url_ = 'https://api.tvrain.ru/api_v2/articles/%s/videos/' %(params['id'])
 	Data = Get_url(url_, Headers, JSON=True)
 
+	print'=========================='
+	print url_
+	print Data
+
+
 	if not Data:return
 
 	quality = _addon.getSetting('archive_quality')
@@ -349,6 +353,9 @@ try:
 	del params['mode']
 except:
 	mode = 'start'
+
+print mode
+
 try:
 	func = globals()[mode]
 except:
