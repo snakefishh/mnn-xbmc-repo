@@ -35,6 +35,8 @@ class Treetv(Plugin):
 		Soup = BeautifulSoup(Data)
 
 		main = Soup.find('div', 'main_content')
+		if not main:return False
+
 		items = main.findAll('div', 'item')
 
 		# paginationControl = main.find('div', 'paginationControl')
