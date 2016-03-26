@@ -1,10 +1,4 @@
 ﻿<?xml version="1.0" encoding="utf-8" standalone="yes"?>
 <settings>
-	<setting id="arh"   type="bool" label="Сразу открывать архив" default="true"/>
 	<setting id="sort"  type="enum" label="Порядок вывода дней в архиве" default="0" values="От текущего|К текущему"/>
-	<setting id="opendey"   type="bool" label="Сразу раскрывать текущий день" default="false"/>
-	
-	<setting type="sep" />
-	<setting id="proxy"   type="bool" label="Использовать HTTP Прокси" default="false"/>
-	<setting id="proxyip"   type="text" label="Адрес Прокси"  subsetting="true" default="" visible="eq(-1,true)" />
 </settings>

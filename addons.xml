@@ -75,20 +75,26 @@
 
 <addon id="plugin.video.peers.tv"
        name="Peers.tv"
-       version="0.1.4"
-       provider-name="MazurokNN">
+       version="0.1.5"
+       provider-name="MazurokNN, Pawel">
+
   <requires>
     <import addon="xbmc.python" version="2.1.0"/>
+    <import addon="script.module.requests" version="2.8.1"/>
+    <import addon="script.module.elementtree" version="1.2.8"/>
   </requires>
+
   <extension point="xbmc.python.pluginsource"
             library="default.py">
         <provides>video</provides>
   </extension>
+
   <extension point="xbmc.addon.metadata">
     <platform>all</platform>
     <summary>Peers.tv</summary>
     <description lang="ru">Peers.tv</description>
   </extension>
+
 </addon>
 
 <addon id="plugin.video.smart.tvrain.ru"
