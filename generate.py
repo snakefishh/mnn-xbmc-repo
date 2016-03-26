@@ -89,10 +89,12 @@ class Generator:
 
                     files = os.listdir(dirname+'/')
                     old_zip = re.compile('('+dirname+'-[\d|\.]+\.zip)').findall('***'.join(files))
-                    if old_zip:
-                        os.remove(dirname+'/'+old_zip[0])
 
-                    sp.check_call('7z a -tzip '+dirname+'/'+dirname+'-'+ver[0]+'.zip '+dirname)
+                    if (dirname+'/'+old_zip[0])!=(dirname+'/'+dirname+'-'+ver[0]+'.zip'):
+                        if old_zip:
+                            os.remove(dirname+'/'+old_zip[0])
+
+                        sp.check_call('7z a -tzip '+dirname+'/'+dirname+'-'+ver[0]+'.zip '+dirname)
 
 
 if ( __name__ == "__main__" ):

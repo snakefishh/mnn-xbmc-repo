@@ -24,17 +24,18 @@ def start(params):
 
 	for section in cxz_data.category:
 		AddFolder(section['title'], 'Cat', {'href':section['href']})
-	AddItem('_'*30+chr(10)+' ')
 
-	if cxz_data.previous_link:
-			AddFolder(clGreen%('< Страница '+str(cxz_data.pg)), '',{'href':cxz_data.previous_link}, property={'refresh':'1'})
-	GetInfoList = CreateCatItems(cxz_data, True)
-	if cxz_data.next_link:
-			AddFolder(clGreen%('Страница '+str(cxz_data.pg+2)+' >'), '',{'href':cxz_data.next_link}, property={'refresh':'1'})
+	if (addon.getSetting('popular')=='true'):
+		AddItem('_'*30+chr(10)+' ')
+		if cxz_data.previous_link:
+				AddFolder(clGreen%('< Страница '+str(cxz_data.pg)), '',{'href':cxz_data.previous_link}, property={'refresh':'1'})
+		GetInfoList = CreateCatItems(cxz_data, True)
+		if cxz_data.next_link:
+				AddFolder(clGreen%('Страница '+str(cxz_data.pg+2)+' >'), '',{'href':cxz_data.next_link}, property={'refresh':'1'})
 
 	upd = xbmc.getInfoLabel('ListItem.Property(refresh)')=='1'
 	xbmcplugin.endOfDirectory(plugin_handle, updateListing=upd, cacheToDisc=False)
-	if GetInfoList: GetMeta(GetInfoList)
+	if (('GetInfoList' in locals()) and (GetInfoList)): GetMeta(GetInfoList)
 
 
 def Cat(params):
@@ -253,7 +254,6 @@ def Content_files(params):
 			dl = re.compile('(\.\d+\.\d+\.\d+\.\d+)').findall(sh_href_dl)
 			if dl:
 				sh_href_dl = sh_href_dl.replace(dl[0], '')
-		print sh_href_dl
 		prop={'IsPlayable':'true'}
 		AddItem(('[only Full] ' if item['only_download'] and not VSFull else '')+item['title']+' '+item['size'],'Play',{'href':item['href'], 'href_dl':sh_href_dl, 'only_download':str(item['only_download'])}, info=info, property=prop, cmItems=ContextMenu)
 	xbmcplugin.endOfDirectory(plugin_handle)
@@ -280,7 +280,7 @@ def Favourites(params):
 	AddFolder('Завершенное',   'Favourites_cat', {'page':'finished'})
 	AddFolder('Рекомендуемое', 'Favourites_cat', {'page':'recommended'})
 	AddFolder('Я рекомендую',  'Favourites_cat', {'page':'irecommended'})
-	AddFolder('Персоны',       'GetPersonFav')
+	#AddFolder('Персоны',       'GetPersonFav')
 	xbmcplugin.endOfDirectory(plugin_handle)
 
 #TODO Переход по страницам ксли режим без категорий?
@@ -411,32 +411,36 @@ def Play(params):
 		except:
 			LocalPL={}
 
-
 		file_id = link.split('=')[1]
 		try:
 			path = LocalPL[file_id]
 		except:
-			Data = Get_url(link)
-			playlist = re.compile("(?s)playlist:\s*\[\s*\{\s*(.+?)\s*\}\s*\]").findall(Data)
-			if not playlist: return
 
-			playlist= playlist[0].replace('\n','').replace('\t','').replace(' ','').replace('download_url','')
-			urls = re.compile("url:'([^']+).+?file_id:'([^']+)").findall(playlist)
+			headders = {
+			'X-Requested-With':'XMLHttpRequest'
+			}
 
+			link = link.replace('view', 'view_iframe')+ '&isStartRequest=true'
+			Data = Get_url(link,JSON=True, headers=headders,Cookie=False)
+
+			if not Data: return
+			try:
+				urls = Data['actionsData']['files']
+			except:
+				urls =''
 			if not urls:return
 			pl={}
 			for i in urls:
-				pl[i[1]]= site_url+i[0]
+				pl[i['id']]= site_url+i['url']
 
 			CacheToFile('playlist_cxz').write(pl)
-
 			path = pl[file_id]
 
-		title  = xbmc.getInfoLabel('Listitem.Title')
-		item = xbmcgui.ListItem(title, path=path)
+		#title  = xbmc.getInfoLabel('Listitem.Title')
+		item = xbmcgui.ListItem(path=path)
 
-		item.setInfo('video', infoLabels={'title':title})
-		item.setProperty('mimetype', 'video/flv')
+		#item.setInfo('video', infoLabels={'title':title})
+		#item.setProperty('mimetype', 'video/flv')
 
 		xbmcplugin.setResolvedUrl(plugin_handle, True, item)
 		#xbmc.Player().play(path,item)
