@@ -4,8 +4,9 @@
 import urllib, urllib2, cookielib, json, re
 from var import *
 import xbmcplugin, xbmcgui
+import pickle
 
-cookie_path =addon_data_path+'cookie'
+cookie_path =addon_data_path+'/cookie'
 
 #AARRGGBB
 AA=lambda cl,ff:cl.replace(' FF', ff)
@@ -32,17 +33,6 @@ def Get_url(url, headers={}, Post = None, GETparams={}, JSON=False, Proxy=None, 
 	h=[]
 	if Proxy:
 		(urllib2.ProxyHandler({'http': Proxy}))
-	if Cookie:
-		if not os.path.exists(os.path.dirname(addon_data_path)):
-				os.makedirs(os.path.dirname(addon_data_path))
-		cookie = cookielib.LWPCookieJar(cookie_path)
-		if os.path.exists(cookie_path):
-			cookie.load()
-		h.append(urllib2.HTTPCookieProcessor(cookie))
-	if h:
-		opener = urllib2.build_opener(*h)
-		if User_Agent: opener.addheaders = [('User-agent', User_Agent)]
-		urllib2.install_opener(opener)
 
 	if GETparams:
 		url = "%s?%s" % (url, urllib.urlencode(GETparams))
@@ -52,6 +42,24 @@ def Get_url(url, headers={}, Post = None, GETparams={}, JSON=False, Proxy=None, 
 
 	req = urllib2.Request(url, Post)
 	if User_Agent: req.add_header("User-Agent", User_Agent)
+	if Cookie:
+		cookie={}
+		if not os.path.exists(os.path.dirname(addon_data_path)):
+				os.makedirs(os.path.dirname(addon_data_path))
+		if os.path.exists(cookie_path):
+			cookie_f=open(cookie_path, 'r')
+
+			try:
+				cookie = pickle.load(cookie_f)
+			except:
+				pass
+
+			cookie_f.close()
+			coo =''
+			for key in cookie.keys():
+				coo+= key+"=" + cookie[key] + ";"
+			req.add_header("Cookie",coo)
+
 	for key, val in headers.items():
 		req.add_header(key, val)
 
@@ -65,7 +73,11 @@ def Get_url(url, headers={}, Post = None, GETparams={}, JSON=False, Proxy=None, 
 		xbmc.log('['+addon_name+'] %s' % e, xbmc.LOGERROR)
 		#xbmcgui.Dialog().ok(' ОШИБКА', str(e))
 		return None		
-	response.close()	
+	zz=''
+	if response.headers.has_key('Set-Cookie'):
+		zz = str(response.headers)
+
+	response.close()
 	if JSON:
 		import json
 		try:
@@ -75,7 +87,14 @@ def Get_url(url, headers={}, Post = None, GETparams={}, JSON=False, Proxy=None, 
 			xbmcgui.Dialog().ok(' ОШИБКА', str(e))
 			return None
 		Data = js	
-	if Cookie: cookie.save()
+	if Cookie and zz:
+		print zz
+		matches = re.findall('(?m)Set-Cookie: (.+?)=(.+?);', zz)
+		for m in matches:
+			cookie[m[0]]=m[1]
+		cookie_f = open(cookie_path, 'w')
+		pickle.dump(cookie,cookie_f)
+		cookie_f.close()
 	return Data
 
 def AddItem(title, mode='', url={}, isFolder=False, img='', ico='', info={}, property={}, cmItems=[]):

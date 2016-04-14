@@ -413,8 +413,9 @@ class cxz():
 
 	def Login(self, login, passw):
 		url = self.site_url+'/login.aspx'
+		headders = {'X-Requested-With':'XMLHttpRequest'}
 		Post={'login':login, 'passwd':passw, 'remember':'1'}
-		Data =Get_url(url, Post=Post, Cookie=True)
+		Data =Get_url(url,headers=headders, Post=Post, Cookie=True)
 		return Data
 
 	def Get_url_lg(self, headers={}, Post = None, GETparams={}, JSON=False, Proxy=None):
@@ -437,6 +438,7 @@ class cxz():
 			if not lg:
 				DelCookie()
 				LgData= self.Login(login, passw)
+				LgData = Get_url(self.url, headers, Post, GETparams, JSON, Proxy, Cookie=(login and passw))
 				Soup = BeautifulSoup(LgData)
 				lg = Soup.find('a', 'b-header__user-profile')
 			else:

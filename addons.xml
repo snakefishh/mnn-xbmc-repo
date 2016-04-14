@@ -20,7 +20,7 @@
 
 <addon id="plugin.video.cxz.to"
        name="cxz.to"
-       version="0.2.3"
+       version="0.2.4"
        provider-name="MazurokNN">
   <requires>
     <import addon="xbmc.python" version="2.1.0"/>
