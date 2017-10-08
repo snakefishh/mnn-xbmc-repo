@@ -22,8 +22,12 @@ common.plugin = _addon_name
 if (sys.platform == 'win32') or (sys.platform == 'win64'):
 	_addon_patch     = _addon_patch.decode('utf-8')
 
-plugin_handle   = int(sys.argv[1])
-xbmcplugin.setContent(plugin_handle, 'movies')
+try:
+	plugin_handle   = int(sys.argv[1])
+	xbmcplugin.setContent(plugin_handle, 'movies')
+except:
+	pass
+
 
 Headers ={'Accept'                      :'application/tvrain.api.2.8+json',
 		  'Accept-Language'             :'ru-RU,ru;q=0.8,en-US;q=0.5,en;q=0.3',
@@ -54,13 +58,19 @@ def get_params():
 				param[splitparams[0]]=splitparams[1]
 	return param
 
-def Get_url(url, headers={}, JSON=False):
-	req = urllib2.Request(url)
+def Get_url(url, headers={}, Post = None, JSON=False):
+	if Post:
+		Post = urllib.urlencode(Post)
+
+	req = urllib2.Request(url, Post)
+	Aut= _addon.getSetting('Authorization_id')
+	if Aut:
+		headers['Authorization']=Aut
 	for key, val in headers.items():
 		req.add_header(key, val)
 	try:
 		response = urllib2.urlopen(req)
-	except (urllib2.HTTPError, urllib2.URLError), e:
+	except (urllib2.HTTPError, urllib2.URLError) as e:
 		xbmc.log('[%s] %s' %(_addon_name, e), xbmc.LOGERROR)
 		xbmcgui.Dialog().ok(' ОШИБКА', str(e))
 		return None
@@ -103,6 +113,7 @@ def start(params):
 	AddItem('Наш Выбор',         {'mode':'ourchoice'})
 	AddItem('Программы',         {'mode':'programscat'})
 	AddItem('Поиск',             {'mode':'search'})
+	AddItem('TEST',              {'mode': 'authorization'})
 	xbmcplugin.endOfDirectory(plugin_handle)
 
 def schedule(params):
@@ -338,14 +349,43 @@ def PlayHLS(params):
 	
 #---------------------------
 def sslwrap(func):
-    @wraps(func)
-    def bar(*args, **kw):
-        kw['ssl_version'] = ssl.PROTOCOL_TLSv1
-        return func(*args, **kw)
-    return bar
+	@wraps(func)
+	def bar(*args, **kw):
+		kw['ssl_version'] = ssl.PROTOCOL_TLSv1
+		return func(*args, **kw)
+	return bar
 
 # see http://stackoverflow.com/questions/14102416/python-requests-requests-exceptions-sslerror-errno-8-ssl-c504-eof-occurred
 ssl.wrap_socket = sslwrap(ssl.wrap_socket)
+
+if sys.argv[1]=='authorization':
+	url_ = 'https://api.tvrain.ru/api_v2/user/auth/'
+	#url_ = 'https://api.tvrain.ru/api_v2/user/me/'
+
+	xbmc.executebuiltin("XBMC.SendClick(10)", True)
+	pDialog = xbmcgui.DialogProgress()
+	pDialog.create('Авторизация', 'Попытка Авторизации.........')
+	pDialog.update(50, '')
+
+
+
+	if sys.argv[2]=='login':
+		user = _addon.getSetting('User')
+		password = _addon.getSetting('password')
+		if (len(user) and len(password)):
+			Data = Get_url(url_, Headers, {'email': user, 'passw': password}, JSON=True)
+			if Data:
+				if ('device_token' in Data and 'user_id' in Data):
+					import base64;
+					_addon.setSetting('Authorization_id','Basic ' + base64.b64encode(str(Data['user_id']) + ':' + str(Data['device_token'])))
+
+
+
+
+
+	pDialog.close()
+	_addon.openSettings()
+	sys.exit()
 
 params = get_params()
 try:
