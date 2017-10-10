@@ -148,12 +148,12 @@ def schedule(params):
 	xbmcplugin.endOfDirectory(plugin_handle)
 
 def live(params):
-	if not _addon.getSetting('Aut_true') == 'true':
-		xbmcgui.Dialog().ok('Недоступно', "Для просмотра Авторизируйтесь в Настройках")
-		# return
-
 	url_ = 'https://api.tvrain.ru/api_v2/live/'
-	Data = Get_url(url_, Headers, JSON=True)
+	Data = Get_url(url_, Headers, JSON=True, Exep=False)
+	if not Data:
+		dialog = xbmcgui.Dialog()
+		dialog.notification('ОШИБКА', 'Контент не доступен', xbmcgui.NOTIFICATION_ERROR, 5000)
+		return
 	xbmc.log('[%s] %s' %(_addon_name, pformat(Data)), xbmc.LOGNOTICE)
 	quality = _addon.getSetting('live_quality')
 	if quality == 'Спрашивать':
@@ -369,38 +369,37 @@ def sslwrap(func):
 ssl.wrap_socket = sslwrap(ssl.wrap_socket)
 
 if sys.argv[1]=='authorization':
-	if sys.argv[2]=='login' or 'id':
+	if sys.argv[2]=='login' or sys.argv[2]=='id':
 		xbmc.executebuiltin("XBMC.SendClick(10)", True)
 		pDialog = xbmcgui.DialogProgress()
 		pDialog.create('Авторизация', 'Попытка Авторизации.........')
 		pDialog.update(50, '')
 
-
-
-	if sys.argv[2]=='login':
-		url_ = 'https://api.tvrain.ru/api_v2/user/auth/'
-		user = _addon.getSetting('User')
-		password = _addon.getSetting('password')
-		Data = Get_url(url_, Headers, {'email': user, 'passw': password}, JSON=True, Exep=False)
-		if Data and ('device_token' in Data and 'user_id' in Data):
-			import base64
-			_addon.setSetting('Authorization_id','Basic ' + base64.b64encode(str(Data['user_id']) + ':' + str(Data['device_token'])))
-			_addon.setSetting('Aut_true', 'true')
-		else:
-			xbmcgui.Dialog().ok(' ОШИБКА', 'ОШИБКА При Попытке Авторизации')
-			_addon.setSetting('Aut_true', 'false')
-
-	if sys.argv[2] == 'id':
-		url_ = 'https://api.tvrain.ru/api_v2/user/me/'
-		Aut = _addon.getSetting('Authorization_id')
-		if Aut:
-			Headers['Authorization'] = Aut
-			Data = Get_url(url_, Headers, JSON=True, Exep=False)
-			if Data:
+		if sys.argv[2]=='login':
+			url_ = 'https://api.tvrain.ru/api_v2/user/auth/'
+			user = _addon.getSetting('User')
+			password = _addon.getSetting('password')
+			Data = Get_url(url_, Headers, {'email': user, 'passw': password}, JSON=True, Exep=False)
+			if Data and ('device_token' in Data and 'user_id' in Data):
+				import base64
+				_addon.setSetting('Authorization_id','Basic ' + base64.b64encode(str(Data['user_id']) + ':' + str(Data['device_token'])))
 				_addon.setSetting('Aut_true', 'true')
 			else:
 				xbmcgui.Dialog().ok(' ОШИБКА', 'ОШИБКА При Попытке Авторизации')
 				_addon.setSetting('Aut_true', 'false')
+
+		if sys.argv[2] == 'id':
+			url_ = 'https://api.tvrain.ru/api_v2/user/me/'
+			Aut = _addon.getSetting('Authorization_id')
+			if Aut:
+				Headers['Authorization'] = Aut
+				Data = Get_url(url_, Headers, JSON=True, Exep=False)
+				if Data:
+					_addon.setSetting('Aut_true', 'true')
+				else:
+					xbmcgui.Dialog().ok(' ОШИБКА', 'ОШИБКА При Попытке Авторизации')
+					_addon.setSetting('Aut_true', 'false')
+		pDialog.close()
 
 	if sys.argv[2] == 'out':
 		_addon.setSetting('Aut_true', 'false')
@@ -417,24 +416,26 @@ if sys.argv[1]=='authorization':
 		try:
 			import pyperclip
 		except Exception as e:
-			xbmc.log('[%s] %s' % (_addon_name, e), xbmc.LOGERROR)
-			xbmcgui.Dialog().ok(' ОШИБКА', str(e))
+			sel =xbmcgui.Dialog().yesno('Информация', 'Для работы с Буфером Обмена Необходимо скачать дополнительные библиотеки','Скачать?')
+			if sel:
+				pDialog = xbmcgui.DialogProgress()
+				pDialog.create('Информация', 'Подождите идет скачивание...')
+				pDialog.update(50, '')
 
-			import urllib2
-			from io import BytesIO
-			from zipfile import ZipFile
-			z = urllib.urlopen("https://github.com/snakefishh/mnn-xbmc-repo/raw/master/Lib/pyperclip.zip").read()
-			zip_data = ZipFile(BytesIO(z))
-			zip_data.extractall(_addon_patch+'/resources/')
-
-			# f = open(_addon_patch+"/1111.jpg", "wb")
-			# f.write(z)
-			# f.close()
-
+				import urllib2
+				from io import BytesIO
+				from zipfile import ZipFile
+				z = urllib.urlopen("https://github.com/snakefishh/mnn-xbmc-repo/raw/master/Lib/pyperclip.zip").read()
+				zip_data = ZipFile(BytesIO(z))
+				zip_data.extractall(_addon_patch+'/resources/')
+				pDialog.close()
+				dialog = xbmcgui.Dialog()
+				dialog.notification('TVRain', 'Скачивание Завершено.', xbmcgui.NOTIFICATION_INFO, 5000)
 		else:
 			pyperclip.copy(_addon.getSetting('Authorization_id'))
+			dialog = xbmcgui.Dialog()
+			dialog.notification('TVRain', 'ID Скопирован..', xbmcgui.NOTIFICATION_INFO, 5000)
 
-	pDialog.close()
 	_addon.openSettings()
 	sys.exit()
 

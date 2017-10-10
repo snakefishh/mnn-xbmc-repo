@@ -24,7 +24,7 @@ class Generator:
         for addon in addons:
             try:
                 # skip any file or .svn folder
-                if ( not os.path.isdir( addon ) or addon == ".svn" ): continue
+                if ( not os.path.isdir( addon ) or addon == ".git" ): continue
                 # create path
                 _path = os.path.join( addon, "addon.xml" )
                 # split lines for stripping
@@ -79,7 +79,6 @@ class Generator:
                 xml_path = os.path.join( dirname, "addon.xml" )
                 if os.path.exists(xml_path):
                     xml = open( xml_path, "r" ).read()
-
                     addon_id = re.compile('<addon id=([^>]+)').findall(xml)
                     if not addon_id:
                         continue
@@ -90,11 +89,10 @@ class Generator:
                     files = os.listdir(dirname+'/')
                     old_zip = re.compile('('+dirname+'-[\d|\.]+\.zip)').findall('***'.join(files))
 
-                    if (dirname+'/'+old_zip[0])!=(dirname+'/'+dirname+'-'+ver[0]+'.zip'):
-                        if old_zip:
-                            os.remove(dirname+'/'+old_zip[0])
-
-                        sp.check_call('7z a -tzip '+dirname+'/'+dirname+'-'+ver[0]+'.zip '+dirname)
+                    if old_zip:
+                        if (dirname+'/'+old_zip[0])!=(dirname+'/'+dirname+'-'+ver[0]+'.zip'):
+                                os.remove(dirname+'/'+old_zip[0])
+                                sp.check_call('7z a -tzip '+dirname+'/'+dirname+'-'+ver[0]+'.zip '+dirname)
 
 
 if ( __name__ == "__main__" ):
