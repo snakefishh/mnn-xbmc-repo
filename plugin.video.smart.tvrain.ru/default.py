@@ -423,7 +423,7 @@ if sys.argv[1]=='authorization':
 			import urllib2
 			from io import BytesIO
 			from zipfile import ZipFile
-			z = urllib.urlopen("https://github.com/snakefishh/mnn-xbmc-repo/raw/master/repository.mnn/repository.mnn-1.0.3.zip").read()
+			z = urllib.urlopen("https://github.com/snakefishh/mnn-xbmc-repo/raw/master/Lib/pyperclip.zip").read()
 			zip_data = ZipFile(BytesIO(z))
 			zip_data.extractall(_addon_patch+'/resources/')
 
