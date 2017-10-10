@@ -3,16 +3,21 @@
 <settings>
 	<category label="Авторизация">
 		<setting id="Aut_true"                           type="bool" default="false" visible="false"/>
-		<setting id="Aut_type"     label="Способ Авторизации" type="enum"  values="Логин и Пароль|Authorization id" default="0"/>
+		<setting id="Aut_type"     label="Способ Авторизации" type="enum"  visible="eq(-1,false)" values="Логин и Пароль|Authorization id" default="0"/>
 
-		<setting id="User"         label="Логин"         type="text" default="" visible="eq(-1,0)"/>
-		<setting id="password"     label="Пароль"        type="text" option="hidden" visible="eq(-2,0)" enable="!eq(-1,)" default="" />
-		<setting id="Authorization_id"     label="Authorization id"  type="text" default="" visible="eq(-3,1)"/>
+		<setting id="User"         label="Логин"         type="text" default="" visible="eq(-1,0)+eq(-2,false)"/>
+		<setting id="password"     label="Пароль"        type="text" option="hidden" visible="eq(-2,0)+eq(-3,false)" enable="!eq(-1,)" default="" />
+		<setting id="Authorization_id"     label="Authorization id"  type="text" default="" visible="eq(-3,1)+eq(-4,false)"/>
 
 		 <setting type="sep"/>
 
-		<setting label="[I][B]Вход по Логину[/B][/I]"   type="action"   visible="eq(-5,0)" enable="!eq(-3,)+!eq(-4,)" action="RunScript($CWD/default.py, authorization, login)" />
-		<setting label="[I][B]Вход по ID[/B][/I]"   type="action"   visible="eq(-6,1)" enable="!eq(-3,)" action="RunScript($CWD/default.py, authorization, id)" />
+		<setting label="[I][B]Вход по Логину[/B][/I]"   type="action"   visible="eq(-5,0)+eq(-6,false)" enable="!eq(-3,)+!eq(-4,)" action="RunScript($CWD/default.py, authorization, login)" />
+		<setting label="[I][B]Вход по ID[/B][/I]"   type="action"   visible="eq(-6,1)+eq(-7,false)" enable="!eq(-3,)" action="RunScript($CWD/default.py, authorization, id)" />
+
+		<setting label="[B][COLOR FF7FFF00]Авторизация Выполнена!!![/COLOR][/B]"  type="lsep"  visible="eq(-8,true)" />
+		<setting label="[I][B]Выход[/B][/I]"   type="action"   visible="eq(-9,true)"  action="RunScript($CWD/default.py, authorization, out)" />
+		<setting type="sep"/>
+		<setting label="Копировать Authorization id"   type="action"   visible="eq(-11,true)"  action="RunScript($CWD/default.py, authorization, copy_id)" />
 
 
 	</category>

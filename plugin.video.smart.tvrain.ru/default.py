@@ -58,21 +58,19 @@ def get_params():
 				param[splitparams[0]]=splitparams[1]
 	return param
 
-def Get_url(url, headers={}, Post = None, JSON=False):
+def Get_url(url, headers={}, Post = None, JSON=False, Exep=True):
 	if Post:
 		Post = urllib.urlencode(Post)
 
 	req = urllib2.Request(url, Post)
-	Aut= _addon.getSetting('Authorization_id')
-	if Aut:
-		headers['Authorization']=Aut
 	for key, val in headers.items():
 		req.add_header(key, val)
 	try:
 		response = urllib2.urlopen(req)
 	except (urllib2.HTTPError, urllib2.URLError) as e:
 		xbmc.log('[%s] %s' %(_addon_name, e), xbmc.LOGERROR)
-		xbmcgui.Dialog().ok(' ОШИБКА', str(e))
+		if Exep:
+			xbmcgui.Dialog().ok(' ОШИБКА', str(e))
 		return None
 	try:
 		Data=response.read()
@@ -81,15 +79,17 @@ def Get_url(url, headers={}, Post = None, JSON=False):
 			Data = zlib.decompressobj(16 + zlib.MAX_WBITS).decompress(Data)
 	except Exception, e:
 		xbmc.log('[%s] %s' %(_addon_name, e), xbmc.LOGERROR)
-		xbmcgui.Dialog().ok(' ОШИБКА', str(e))
+		if Exep:
+			xbmcgui.Dialog().ok(' ОШИБКА', str(e))
 		return None
 	response.close()
 	if JSON:
 		try:
 			js = json.loads(Data)
 		except Exception, e:
-			xbmc.log('[%s] %s' %(_addon_name, e), xbmc.LOGERROR)
-			xbmcgui.Dialog().ok(' ОШИБКА', str(e))
+			xbmc.log('[%s] %s' % (_addon_name, e), xbmc.LOGERROR)
+			if Exep:
+				xbmcgui.Dialog().ok(' ОШИБКА', str(e))
 			return None
 		Data = js
 	return Data
@@ -107,13 +107,19 @@ def AddItem(title, url={}, isFolder=True, img='', ico='', info={}, property={}):
 	xbmcplugin.addDirectoryItem(plugin_handle, uri, item, isFolder)
 
 def start(params):
+	if _addon.getSetting('Aut_true') == 'true':
+		url_ = 'https://api.tvrain.ru/api_v2/user/me/'
+		Data = Get_url(url_, Headers, JSON=True, Exep=False)
+		if not Data:
+			xbmcgui.Dialog().ok(' ОШИБКА', 'ОШИБКА При Попытке Авторизации')
+			_addon.setSetting('Aut_true', 'false')
+
 	AddItem('Эфир',              {'mode':'live'})
 	#AddItem('Последние передачи',{'mode':'schedule'})
 	AddItem('Популярное',        {'mode':'popular'})
 	AddItem('Наш Выбор',         {'mode':'ourchoice'})
 	AddItem('Программы',         {'mode':'programscat'})
 	AddItem('Поиск',             {'mode':'search'})
-	AddItem('TEST',              {'mode': 'authorization'})
 	xbmcplugin.endOfDirectory(plugin_handle)
 
 def schedule(params):
@@ -142,6 +148,10 @@ def schedule(params):
 	xbmcplugin.endOfDirectory(plugin_handle)
 
 def live(params):
+	if not _addon.getSetting('Aut_true') == 'true':
+		xbmcgui.Dialog().ok('Недоступно', "Для просмотра Авторизируйтесь в Настройках")
+		# return
+
 	url_ = 'https://api.tvrain.ru/api_v2/live/'
 	Data = Get_url(url_, Headers, JSON=True)
 	xbmc.log('[%s] %s' %(_addon_name, pformat(Data)), xbmc.LOGNOTICE)
@@ -359,33 +369,76 @@ def sslwrap(func):
 ssl.wrap_socket = sslwrap(ssl.wrap_socket)
 
 if sys.argv[1]=='authorization':
-	url_ = 'https://api.tvrain.ru/api_v2/user/auth/'
-	#url_ = 'https://api.tvrain.ru/api_v2/user/me/'
-
-	xbmc.executebuiltin("XBMC.SendClick(10)", True)
-	pDialog = xbmcgui.DialogProgress()
-	pDialog.create('Авторизация', 'Попытка Авторизации.........')
-	pDialog.update(50, '')
+	if sys.argv[2]=='login' or 'id':
+		xbmc.executebuiltin("XBMC.SendClick(10)", True)
+		pDialog = xbmcgui.DialogProgress()
+		pDialog.create('Авторизация', 'Попытка Авторизации.........')
+		pDialog.update(50, '')
 
 
 
 	if sys.argv[2]=='login':
+		url_ = 'https://api.tvrain.ru/api_v2/user/auth/'
 		user = _addon.getSetting('User')
 		password = _addon.getSetting('password')
-		if (len(user) and len(password)):
-			Data = Get_url(url_, Headers, {'email': user, 'passw': password}, JSON=True)
+		Data = Get_url(url_, Headers, {'email': user, 'passw': password}, JSON=True, Exep=False)
+		if Data and ('device_token' in Data and 'user_id' in Data):
+			import base64
+			_addon.setSetting('Authorization_id','Basic ' + base64.b64encode(str(Data['user_id']) + ':' + str(Data['device_token'])))
+			_addon.setSetting('Aut_true', 'true')
+		else:
+			xbmcgui.Dialog().ok(' ОШИБКА', 'ОШИБКА При Попытке Авторизации')
+			_addon.setSetting('Aut_true', 'false')
+
+	if sys.argv[2] == 'id':
+		url_ = 'https://api.tvrain.ru/api_v2/user/me/'
+		Aut = _addon.getSetting('Authorization_id')
+		if Aut:
+			Headers['Authorization'] = Aut
+			Data = Get_url(url_, Headers, JSON=True, Exep=False)
 			if Data:
-				if ('device_token' in Data and 'user_id' in Data):
-					import base64;
-					_addon.setSetting('Authorization_id','Basic ' + base64.b64encode(str(Data['user_id']) + ':' + str(Data['device_token'])))
+				_addon.setSetting('Aut_true', 'true')
+			else:
+				xbmcgui.Dialog().ok(' ОШИБКА', 'ОШИБКА При Попытке Авторизации')
+				_addon.setSetting('Aut_true', 'false')
 
+	if sys.argv[2] == 'out':
+		_addon.setSetting('Aut_true', 'false')
+		_addon.setSetting('Authorization_id','')
+		_addon.setSetting('User','')
+		_addon.setSetting('password','')
 
+	if sys.argv[2] == 'copy_id':
+		_addon_patch = xbmc.translatePath(_addon.getAddonInfo('path'))
+		if (sys.platform == 'win32') or (sys.platform == 'win64'):
+			_addon_patch = _addon_patch.decode('utf-8')
+		sys.path.append(os.path.join(_addon_patch, 'resources', 'lib'))
 
+		try:
+			import pyperclip
+		except Exception as e:
+			xbmc.log('[%s] %s' % (_addon_name, e), xbmc.LOGERROR)
+			xbmcgui.Dialog().ok(' ОШИБКА', str(e))
 
+			import urllib2
+			from io import BytesIO
+			from zipfile import ZipFile
+			z = urllib.urlopen("https://github.com/snakefishh/mnn-xbmc-repo/raw/master/repository.mnn/repository.mnn-1.0.3.zip").read()
+			zip_data = ZipFile(BytesIO(z))
+			zip_data.extractall(_addon_patch+'/resources/')
+
+			# f = open(_addon_patch+"/1111.jpg", "wb")
+			# f.write(z)
+			# f.close()
+
+		else:
+			pyperclip.copy(_addon.getSetting('Authorization_id'))
 
 	pDialog.close()
 	_addon.openSettings()
 	sys.exit()
+
+if _addon.getSetting('Aut_true')=='true': Headers['Authorization'] = _addon.getSetting('Authorization_id')
 
 params = get_params()
 try:
